@@ -1,0 +1,38 @@
+# 워크플로우의 이름
+name: News Scraper
+
+# 워크플로우 실행 조건
+on:
+  schedule:
+    # CRON 표현식: 매일 UTC 기준 1시와 13시에 실행 (한국 시간 오전 10시, 오후 10시)
+    - cron: '0 1,13 * * *'
+  # Actions 탭에서 수동으로 실행 가능하게 함
+  workflow_dispatch:
+
+# 실행될 작업(Job) 정의
+jobs:
+  build:
+    # 작업이 실행될 가상 환경
+    runs-on: ubuntu-latest
+
+    # 작업 단계(Step) 정의
+    steps:
+      # 1. 저장소의 코드를 가상 환경으로 가져옴
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 파이썬 환경 설정
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      # 3. 필요한 라이브러리 설치 (최상위 경로의 requirements.txt 사용)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. 파이썬 스크립트 실행 (전체 경로 지정)
+      - name: Run Python script
+        run: python 25-Summer-MIRAEASSET/뉴스스크래핑/최종_뉴스요약_jsw.py
