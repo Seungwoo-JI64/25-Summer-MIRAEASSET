@@ -5,7 +5,7 @@ name: News Scraper
 on:
   schedule:
     # CRON 표현식: 매일 UTC 기준 0, 6, 12, 18시에 실행 (한국 시간 오전 9시, 오후 3시, 오후 9시, 오전 3시)
-    - cron: '0 0,6,12,18 * * *'
+    - cron: '40 14 * * *'
   # Actions 탭에서 수동으로 실행 가능하게 함
   workflow_dispatch:
 
