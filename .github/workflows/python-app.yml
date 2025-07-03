@@ -35,4 +35,4 @@ jobs:
 
       # 4. 파이썬 스크립트 실행 (전체 경로 지정)
       - name: Run Python script
-        run: python 25-Summer-MIRAEASSET/뉴스스크래핑/최종_뉴스요약_jsw.py
+        run: python 뉴스스크래핑/최종_뉴스요약_jsw.py
