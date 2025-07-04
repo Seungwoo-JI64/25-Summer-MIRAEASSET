@@ -78,18 +78,26 @@ def get_all_news_links(base_urls):
             print(f"'{url}' 페이지에서 기사를 찾을 수 없거나 로딩에 실패했습니다.")
             continue
 
-        # 스크롤을 끝까지 내림
-        last_height = driver.execute_script("return document.body.scrollHeight")
-        while True:
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # --- 스크롤 로직 수정 ---
+        # 리소스 부족으로 인한 브라우저 멈춤 현상을 방지하기 위해 스크롤 횟수를 10회로 제한
+        print("페이지 스크롤을 시작합니다 (최대 10회)...")
+        for i in range(20): 
             try:
-                # scrollHeight가 변경될 때까지 (최대 10초) 대기
-                wait.until(lambda d: d.execute_script("return document.body.scrollHeight") > last_height)
-                # 새로운 높이로 업데이트
+                # 현재 스크롤 높이 저장
                 last_height = driver.execute_script("return document.body.scrollHeight")
+                # 스크롤 다운
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+                # 스크롤 후 높이가 변경될 때까지 최대 15초 대기
+                WebDriverWait(driver, 5).until(
+                    lambda d: d.execute_script("return document.body.scrollHeight") > last_height
+                )
+                print(f"스크롤 {i+1}/20 완료, 새 콘텐츠 로드됨.")
             except TimeoutException:
-                # 높이 변경이 없으면 더 이상 로드할 콘텐츠가 없는 것이므로 반복 종료
+                # 높이 변경이 없으면 모든 콘텐츠를 로드한 것이므로 스크롤 중단
+                print("더 이상 로드할 콘텐츠가 없어 스크롤을 중단합니다.")
                 break
+        # --- 수정 끝 ---
 
         # 페이지 소스를 BeautifulSoup으로 파싱
         soup = BeautifulSoup(driver.page_source, 'html.parser')
