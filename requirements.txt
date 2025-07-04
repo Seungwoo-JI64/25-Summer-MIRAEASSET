@@ -8,3 +8,4 @@ webdriver-manager
 beautifulsoup4
 python-dateutil
 supabase
+yfinance
