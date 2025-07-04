@@ -56,9 +56,11 @@ def get_all_news_links(base_urls):
     """
     # Selenium WebDriver 설정
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')  # 브라우저 창을 띄우지 않음
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument("--headless")  # 브라우저 창을 띄우지 않음
+    options.add_argument("--no-sandbox") # 컨테이너 환경에서 안정성을 위해 필요
+    options.add_argument("--disable-dev-shm-usage") # 메모리 공유 문제 방지
+    options.add_argument("--disable-gpu") # GPU 비활성화
+    options.add_argument("--window-size=1920,1080") # 창 크기 지정
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
