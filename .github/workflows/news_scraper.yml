@@ -4,8 +4,7 @@ name: News Scraper
 # 워크플로우 실행 조건
 on:
   schedule:
-    # - cron: '0 11,23 * * *' #시간 수정 (한국시간 8시, 20시)
-    - cron: '14 12 * * *' #시헙
+    - cron: '0 11,23 * * *' #시간 수정 (한국시간 8시, 20시)
 
   # Actions 탭에서 수동으로 실행 가능하게 함
   workflow_dispatch:
@@ -36,4 +35,7 @@ jobs:
 
       # 4. 파이썬 스크립트 실행 (전체 경로 지정)
       - name: Run Python script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python 뉴스스크래핑/최종_뉴스요약_jsw.py
