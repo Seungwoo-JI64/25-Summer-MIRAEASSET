@@ -4,8 +4,7 @@ name: News Scraper
 # 워크플로우 실행 조건
 on:
   schedule:
-    # CRON 표현식: 매일 UTC 기준 0시와 12시에 실행 (한국 시간 오전 9시, 오후 9시)
-    - cron: '0 0,12 * * *'
+    - cron: '0 11,23 * * *' #시간 수정 (한국시간 8시, 20시)
   # Actions 탭에서 수동으로 실행 가능하게 함
   workflow_dispatch:
 
