@@ -1,0 +1,11 @@
+# requirements.txt
+
+pandas
+numpy
+requests
+selenium
+webdriver-manager
+beautifulsoup4
+python-dateutil
+supabase
+yfinance
