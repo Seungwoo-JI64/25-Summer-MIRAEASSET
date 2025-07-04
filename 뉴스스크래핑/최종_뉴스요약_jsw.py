@@ -534,8 +534,9 @@ print("--- 데이터베이스 업로드 준비가 되었습니다. ---")
 # Supabase 클라이언트
 ## 각각 프로젝트의 고유 주소와 키이다
 ### 이것은 다른 테이블과도 동일하게 공유된다.
-supabase_url = "https://hcmniqyaqybzhmzmaumh.supabase.co"
-supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjbW5pcXlhcXliemhtem1hdW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0Mzk5NDgsImV4cCI6MjA2NzAxNTk0OH0.wj3P2BaI9_9LjXPULyKIYja20Xk3TbuqS916Sw83Pdg"
+#### 키 깃허브에 암호화
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
 
 # 데이터 업로드
 ## 기존에 있는 데이터와 중복되지 않는 데이터만 업로드한다.
