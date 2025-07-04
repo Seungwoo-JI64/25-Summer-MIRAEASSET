@@ -48,96 +48,169 @@ def parse_time_ago(time_str):
             return timedelta(hours=value)
             
     return None
+## 기존 웹크롤링 함수
+# def get_all_news_links(base_urls):
+#     """
+#     주어진 모든 URL 페이지에서 12시간 이내에 작성된
+#     모든 기사의 제목과 링크를 수집하고 중복을 제거합니다.
+#     """
+#     # Selenium WebDriver 설정
+#     options = webdriver.ChromeOptions()
+#     options.add_argument("--headless")  # 브라우저 창을 띄우지 않음
+#     options.add_argument("--no-sandbox") # 컨테이너 환경에서 안정성을 위해 필요
+#     options.add_argument("--disable-dev-shm-usage") # 메모리 공유 문제 방지
+#     options.add_argument("--disable-gpu") # GPU 비활성화
+#     options.add_argument("--window-size=1920,1080") # 창 크기 지정
 
+#     #docker 환경에서 크롬 드라이버 설치
+#     options.binary_location = "/usr/bin/google-chrome"
+#     service = Service()
+#     driver = webdriver.Chrome(service=service, options=options)
+
+#     unique_articles = {}
+
+#     for url in base_urls:
+#         print(f"'{url}' 페이지에서 기사 목록을 수집하는 중...")
+#         driver.get(url)
+        
+#         # WebDriverWait 객체 생성 (타임아웃 10초)
+#         wait = WebDriverWait(driver, 10)
+        
+#         try:
+#             # 페이지 로딩 대기: 최소 1개의 기사 아이템이 로드될 때까지
+#             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.stream-item.story-item")))
+#         except TimeoutException:
+#             print(f"'{url}' 페이지에서 기사를 찾을 수 없거나 로딩에 실패했습니다.")
+#             continue
+
+#         # --- 스크롤 로직 수정 ---
+#         # 리소스 부족으로 인한 브라우저 멈춤 현상을 방지하기 위해 스크롤 횟수를 10회로 제한
+#         print("페이지 스크롤을 시작합니다 (최대 10회)...")
+#         for i in range(20): 
+#             try:
+#                 # 현재 스크롤 높이 저장
+#                 last_height = driver.execute_script("return document.body.scrollHeight")
+#                 # 스크롤 다운
+#                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+#                 # 스크롤 후 높이가 변경될 때까지 최대 15초 대기
+#                 WebDriverWait(driver, 5).until(
+#                     lambda d: d.execute_script("return document.body.scrollHeight") > last_height
+#                 )
+#                 print(f"스크롤 {i+1}/20 완료, 새 콘텐츠 로드됨.")
+#             except TimeoutException:
+#                 # 높이 변경이 없으면 모든 콘텐츠를 로드한 것이므로 스크롤 중단
+#                 print("더 이상 로드할 콘텐츠가 없어 스크롤을 중단합니다.")
+#                 break
+#         # --- 수정 끝 ---
+
+#         # 페이지 소스를 BeautifulSoup으로 파싱
+#         soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+#         # 기사 목록 (li 태그) 찾기
+#         news_list = soup.select('li.stream-item.story-item')
+
+#         for item in news_list:
+#             title_tag = item.select_one('h3')
+#             link_tag = item.select_one('a.subtle-link')
+#             # 발행 시간 정보를 담고 있는 div 태그 선택
+#             time_tag = item.select_one('div.publishing')
+
+#             if title_tag and link_tag and link_tag.has_attr('href') and time_tag:
+#                 time_str = time_tag.get_text(strip=True)
+                
+#                 # 발행 시간을 파싱
+#                 time_delta = parse_time_ago(time_str)
+                
+#                 # 파싱에 성공했고, 12시간 이내인 경우에만 추가
+#                 if time_delta and time_delta <= timedelta(hours=12):
+#                     title = title_tag.get_text(strip=True)
+#                     link = "https://finance.yahoo.com" + link_tag['href']
+
+#                     # 제목을 기준으로 중복 제거
+#                     if title not in unique_articles:
+#                         unique_articles[title] = {"url": link, "time": time_str}
+
+#     driver.quit()
+    
+#     # 결과를 리스트 형태로 변환
+#     article_list = [{"title": title, "url": data["url"], "time": data["time"]} for title, data in unique_articles.items()]
+#     print(f"총 {len(article_list)}개의 12시간 이내 기사를 찾았습니다.")
+#     return article_list
+
+##새로운 웹크롤링 함수 생성
 def get_all_news_links(base_urls):
     """
     주어진 모든 URL 페이지에서 12시간 이내에 작성된
     모든 기사의 제목과 링크를 수집하고 중복을 제거합니다.
     """
-    # Selenium WebDriver 설정
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # 브라우저 창을 띄우지 않음
-    options.add_argument("--no-sandbox") # 컨테이너 환경에서 안정성을 위해 필요
-    options.add_argument("--disable-dev-shm-usage") # 메모리 공유 문제 방지
-    options.add_argument("--disable-gpu") # GPU 비활성화
-    options.add_argument("--window-size=1920,1080") # 창 크기 지정
-
-    #docker 환경에서 크롬 드라이버 설치
-    options.binary_location = "/usr/bin/google-chrome"
-    service = Service()
-    driver = webdriver.Chrome(service=service, options=options)
-
     unique_articles = {}
 
+    # for 루프 안에서 매번 드라이버를 생성하고 종료하도록 구조 변경
     for url in base_urls:
         print(f"'{url}' 페이지에서 기사 목록을 수집하는 중...")
-        driver.get(url)
         
-        # WebDriverWait 객체 생성 (타임아웃 10초)
-        wait = WebDriverWait(driver, 10)
+        # Selenium WebDriver 설정
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.binary_location = "/usr/bin/google-chrome"
         
+        service = Service()
+        driver = webdriver.Chrome(service=service, options=options)
+
         try:
-            # 페이지 로딩 대기: 최소 1개의 기사 아이템이 로드될 때까지
+            driver.get(url)
+            wait = WebDriverWait(driver, 20)
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.stream-item.story-item")))
-        except TimeoutException:
-            print(f"'{url}' 페이지에서 기사를 찾을 수 없거나 로딩에 실패했습니다.")
-            continue
 
-        # --- 스크롤 로직 수정 ---
-        # 리소스 부족으로 인한 브라우저 멈춤 현상을 방지하기 위해 스크롤 횟수를 10회로 제한
-        print("페이지 스크롤을 시작합니다 (최대 10회)...")
-        for i in range(20): 
-            try:
-                # 현재 스크롤 높이 저장
-                last_height = driver.execute_script("return document.body.scrollHeight")
-                # 스크롤 다운
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            # 스크롤 횟수 제한 (최대 10회)
+            print("페이지 스크롤을 시작합니다 (최대 10회)...")
+            for i in range(10):
+                try:
+                    last_height = driver.execute_script("return document.body.scrollHeight")
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    WebDriverWait(driver, 15).until(
+                        lambda d: d.execute_script("return document.body.scrollHeight") > last_height
+                    )
+                    print(f"스크롤 {i+1}/10 완료, 새 콘텐츠 로드됨.")
+                except TimeoutException:
+                    print("더 이상 로드할 콘텐츠가 없어 스크롤을 중단합니다.")
+                    break
+            
+            # 페이지 소스를 BeautifulSoup으로 파싱
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
+            news_list = soup.select('li.stream-item.story-item')
 
-                # 스크롤 후 높이가 변경될 때까지 최대 15초 대기
-                WebDriverWait(driver, 5).until(
-                    lambda d: d.execute_script("return document.body.scrollHeight") > last_height
-                )
-                print(f"스크롤 {i+1}/20 완료, 새 콘텐츠 로드됨.")
-            except TimeoutException:
-                # 높이 변경이 없으면 모든 콘텐츠를 로드한 것이므로 스크롤 중단
-                print("더 이상 로드할 콘텐츠가 없어 스크롤을 중단합니다.")
-                break
-        # --- 수정 끝 ---
+            for item in news_list:
+                title_tag = item.select_one('h3')
+                link_tag = item.select_one('a.subtle-link')
+                time_tag = item.select_one('div.publishing')
 
-        # 페이지 소스를 BeautifulSoup으로 파싱
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        
-        # 기사 목록 (li 태그) 찾기
-        news_list = soup.select('li.stream-item.story-item')
+                if title_tag and link_tag and link_tag.has_attr('href') and time_tag:
+                    time_str = time_tag.get_text(strip=True)
+                    time_delta = parse_time_ago(time_str)
+                    
+                    if time_delta and time_delta <= timedelta(hours=12):
+                        title = title_tag.get_text(strip=True)
+                        link = "https://finance.yahoo.com" + link_tag['href']
 
-        for item in news_list:
-            title_tag = item.select_one('h3')
-            link_tag = item.select_one('a.subtle-link')
-            # 발행 시간 정보를 담고 있는 div 태그 선택
-            time_tag = item.select_one('div.publishing')
+                        if title not in unique_articles:
+                            unique_articles[title] = {"url": link, "time": time_str}
 
-            if title_tag and link_tag and link_tag.has_attr('href') and time_tag:
-                time_str = time_tag.get_text(strip=True)
-                
-                # 발행 시간을 파싱
-                time_delta = parse_time_ago(time_str)
-                
-                # 파싱에 성공했고, 12시간 이내인 경우에만 추가
-                if time_delta and time_delta <= timedelta(hours=12):
-                    title = title_tag.get_text(strip=True)
-                    link = "https://finance.yahoo.com" + link_tag['href']
+        except Exception as e:
+            print(f"'{url}' 처리 중 오류 발생: {e}")
+        finally:
+            # try, except와 상관없이 작업이 끝나면 반드시 드라이버 종료
+            driver.quit()
 
-                    # 제목을 기준으로 중복 제거
-                    if title not in unique_articles:
-                        unique_articles[title] = {"url": link, "time": time_str}
-
-    driver.quit()
-    
     # 결과를 리스트 형태로 변환
     article_list = [{"title": title, "url": data["url"], "time": data["time"]} for title, data in unique_articles.items()]
     print(f"총 {len(article_list)}개의 12시간 이내 기사를 찾았습니다.")
     return article_list
-
 # 대상 URL 목록
 target_urls = [
     "https://finance.yahoo.com/topic/latest-news/",
