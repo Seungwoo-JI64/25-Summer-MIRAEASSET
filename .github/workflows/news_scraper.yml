@@ -5,7 +5,7 @@ name: News Scraper
 on:
   schedule:
     # - cron: '0 11,23 * * *' #시간 수정 (한국시간 8시, 20시)
-    - cron: '6 12 * * *' #시헙
+    - cron: '14 12 * * *' #시헙
 
   # Actions 탭에서 수동으로 실행 가능하게 함
   workflow_dispatch:
