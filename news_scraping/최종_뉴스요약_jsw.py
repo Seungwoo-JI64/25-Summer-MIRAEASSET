@@ -61,7 +61,10 @@ def get_all_news_links(base_urls):
     options.add_argument("--disable-dev-shm-usage") # 메모리 공유 문제 방지
     options.add_argument("--disable-gpu") # GPU 비활성화
     options.add_argument("--window-size=1920,1080") # 창 크기 지정
-    service = Service(ChromeDriverManager().install())
+
+    #docker 환경에서 크롬 드라이버 설치
+    options.binary_location = "/usr/bin/google-chrome"
+    service = Service()
     driver = webdriver.Chrome(service=service, options=options)
 
     unique_articles = {}
