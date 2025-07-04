@@ -6,14 +6,18 @@ import numpy as np
 import time
 import json
 from datetime import datetime, timedelta
-import re
 ##뉴스스크랩
+import re
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 ## API 구동
 import http.client
 import uuid
@@ -49,7 +53,6 @@ def get_all_news_links(base_urls):
     """
     주어진 모든 URL 페이지에서 12시간 이내에 작성된
     모든 기사의 제목과 링크를 수집하고 중복을 제거합니다.
-    이를 위하여 위에서 시간을 추출하는 parse_time_ago 함수를 생성하였다.
     """
     # Selenium WebDriver 설정
     options = webdriver.ChromeOptions()
@@ -59,24 +62,34 @@ def get_all_news_links(base_urls):
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
-    unique_articles = {} #제목이 중복되지 않은 뉴스 리스트 저장용
+    unique_articles = {}
 
     for url in base_urls:
-        print(f"'{url}' 페이지에서 기사 목록을 수집하는 중...") #작업 진행 확인용
+        print(f"'{url}' 페이지에서 기사 목록을 수집하는 중...")
         driver.get(url)
-        time.sleep(3)  # 페이지 로딩 대기
+        
+        # WebDriverWait 객체 생성 (타임아웃 10초)
+        wait = WebDriverWait(driver, 10)
+        
+        try:
+            # 페이지 로딩 대기: 최소 1개의 기사 아이템이 로드될 때까지
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.stream-item.story-item")))
+        except TimeoutException:
+            print(f"'{url}' 페이지에서 기사를 찾을 수 없거나 로딩에 실패했습니다.")
+            continue
 
         # 스크롤을 끝까지 내림
-        ## 야후 파이낸스 뉴스는 스크롤을 내릴면 갱신되는 형태를 가진다
         last_height = driver.execute_script("return document.body.scrollHeight")
         while True:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)  # 새 콘텐츠 로딩 대기
-            ## 더욱 스크롤을 해야할것이 있는지 확인
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
+            try:
+                # scrollHeight가 변경될 때까지 (최대 10초) 대기
+                wait.until(lambda d: d.execute_script("return document.body.scrollHeight") > last_height)
+                # 새로운 높이로 업데이트
+                last_height = driver.execute_script("return document.body.scrollHeight")
+            except TimeoutException:
+                # 높이 변경이 없으면 더 이상 로드할 콘텐츠가 없는 것이므로 반복 종료
                 break
-            last_height = new_height
 
         # 페이지 소스를 BeautifulSoup으로 파싱
         soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -85,8 +98,8 @@ def get_all_news_links(base_urls):
         news_list = soup.select('li.stream-item.story-item')
 
         for item in news_list:
-            title_tag = item.select_one('h3') #기자 제목 
-            link_tag = item.select_one('a.subtle-link') #기사 링크
+            title_tag = item.select_one('h3')
+            link_tag = item.select_one('a.subtle-link')
             # 발행 시간 정보를 담고 있는 div 태그 선택
             time_tag = item.select_one('div.publishing')
 
@@ -99,17 +112,17 @@ def get_all_news_links(base_urls):
                 # 파싱에 성공했고, 12시간 이내인 경우에만 추가
                 if time_delta and time_delta <= timedelta(hours=12):
                     title = title_tag.get_text(strip=True)
-                    link = "https://finance.yahoo.com" + link_tag['href'] # 링크 주소 수정
+                    link = "https://finance.yahoo.com" + link_tag['href']
 
                     # 제목을 기준으로 중복 제거
-                    if title not in unique_articles: # 중복된 제목이 없을 경우에만 새로 추가하는 형식
+                    if title not in unique_articles:
                         unique_articles[title] = {"url": link, "time": time_str}
 
     driver.quit()
     
     # 결과를 리스트 형태로 변환
     article_list = [{"title": title, "url": data["url"], "time": data["time"]} for title, data in unique_articles.items()]
-    print(f"총 {len(article_list)}개의 12시간 이내 기사를 찾았습니다.") #결과 확인용
+    print(f"총 {len(article_list)}개의 12시간 이내 기사를 찾았습니다.")
     return article_list
 
 # 대상 URL 목록
@@ -121,7 +134,7 @@ target_urls = [
     # "https://finance.yahoo.com/topic/earnings/",
     # "https://finance.yahoo.com/topic/tech/",
     "https://finance.yahoo.com/topic/electric-vehicles/"
-] # 나에게 필요한 뉴스만 보기 위함이다.
+]
 
 # 함수 실행
 news_list = get_all_news_links(target_urls)
@@ -204,7 +217,7 @@ full_news_data = get_article_details(news_list)
 
 # 최종 결과 생성 (데이터프레임으로 변환)
 df = pd.DataFrame(full_news_data)
-df['publish_date'] = pd.to_datetime(df['publish_date'], errors='coerce') + pd.Timedelta(hours=9) # 한국 시간으로 변환 UTC+9
+# df['publish_date'] = pd.to_datetime(df['publish_date'], errors='coerce') + pd.Timedelta(hours=9) # 한국 시간으로 변환 UTC+9
 print("--- 최종 뉴스 스크래핑 완료")
 ###############################################################
 # 3. 뉴스 요약
