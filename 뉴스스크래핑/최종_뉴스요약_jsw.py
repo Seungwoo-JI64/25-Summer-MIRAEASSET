@@ -578,6 +578,8 @@ try:
         ## 이 부분에서 오류가 발생할 수 있다.
         ### 오류가 발생하면 이 과정을 참조 처리하고 진행한다.
         #### 아래의 ❌오류를 확인한다
+        # 'records'로 변환하기 전에 데이터프레임의 컬럼 타입을 변경
+        final_df['published_date'] = pd.to_datetime(final_df['published_date'])
         records_to_upload = final_df.to_dict('records')
         for record in records_to_upload:
             record['published_date'] = record['published_date'].isoformat()
