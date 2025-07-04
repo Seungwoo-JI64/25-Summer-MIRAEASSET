@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # 원하시는 파이썬 버전으로 설정
+          python-version: '3.12' # 원하시는 파이썬 버전으로 설정
 
       - name: Install dependencies
         run: |
