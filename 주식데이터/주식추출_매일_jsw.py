@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import os
 
 # API 키 설정 (환경 변수에서 키를 가져오는 것이 안전합니다)
+## yml파일에서 환경변수를 가져오기 때문에 load_dotenv(dotenv_path='../.env')을 사용하지 않는다
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
 
