@@ -361,8 +361,8 @@ try:
     
         # 업로드 형식으로 변환
         records_to_upload = new_articles_df.to_dict('records')
-        for record in records_to_upload:
-            record['publish_date'] = record['publish_date'].isoformat()
+        # for record in records_to_upload:
+        #     record['publish_date'] = record['publish_date'].isoformat()
         
         # 데이터 삽입
         data, count = supabase.table('financial_news_summary').insert(records_to_upload).execute()
