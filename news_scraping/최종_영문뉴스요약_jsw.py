@@ -23,7 +23,7 @@ import http.client
 import uuid
 from supabase import create_client, Client
 from google import genai
-from google.genai import types
+from google.generativeai import types
 
 
 
