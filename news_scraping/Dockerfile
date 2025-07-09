@@ -22,4 +22,4 @@ COPY . .
 
 # 6. 이 환경이 시작될 때 실행할 기본 명령어를 설정합니다.
 #    - Render 대시보드의 Command와 동일한 역할을 합니다.
-CMD ["python3", "최종_뉴스요약_jsw.py"]
+CMD ["python3", "최종_영문뉴스요약_jsw.py"]
