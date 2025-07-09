@@ -286,7 +286,7 @@ ARTICLE TO ANALYZE:
             contents=contents,
         ):
             response_chunks.append(chunk.text)
-            time.sleep(5) #GEMINI 무료는 1분에 10번 호출 제한걸림
+        time.sleep(5) #GEMINI 무료는 1분에 10번 호출 제한걸림
         
         return "".join(response_chunks)
 
