@@ -130,8 +130,8 @@ def get_all_news_links(base_urls):
 target_urls = [
     "https://finance.yahoo.com/topic/latest-news/",
     "https://finance.yahoo.com/topic/stock-market-news/",
-    "https://finance.yahoo.com/topic/yahoo-finance-originals/",
-    "https://finance.yahoo.com/topic/economic-news/",
+    # "https://finance.yahoo.com/topic/yahoo-finance-originals/",
+    # "https://finance.yahoo.com/topic/economic-news/",
     # "https://finance.yahoo.com/topic/earnings/",
     # "https://finance.yahoo.com/topic/tech/",
     "https://finance.yahoo.com/topic/electric-vehicles/"
