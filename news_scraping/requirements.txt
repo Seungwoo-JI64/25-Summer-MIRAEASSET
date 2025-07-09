@@ -9,4 +9,4 @@ beautifulsoup4
 python-dateutil
 supabase
 yfinance
-google-generai
+google-generai==0.8.5
