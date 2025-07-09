@@ -341,6 +341,9 @@ if __name__ == "__main__":
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
 
+#저장에 사용할 데이터프레임
+df=df[["title","publish_date","url","summary","embedding"]]
+
 try:
     supabase: Client = create_client(supabase_url, supabase_key)
     print("☁️ Supabase에 연결하여 기존 데이터를 확인합니다.")
