@@ -139,6 +139,7 @@ target_urls = [
 
 # 함수 실행
 news_list = get_all_news_links(target_urls)
+news_list = news_list[:100] #한번에 100개, 하루에 총 200개 제한 <- gemini 2.5는 무료이용일 경우 하루에 250번 호출 제한
 
 ##############################################
 # 2. 뉴스 스크랩
