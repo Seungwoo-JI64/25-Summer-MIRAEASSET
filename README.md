@@ -36,7 +36,7 @@
 
 | root | 레포지토리 최상단 |  |  
 |---|---|---|   
-| .env | 주식데이터/주식추출_매일_jsw.py 업로드 Supabase 접속 키 저장 | 지승우 |  
+| .env | 주식데이터/주식추출_매일_jsw.py, 기업설명추가_jsw.ipynb 업로드 Supabase, google ai studio 접속 키 저장 | 지승우 |  
 | requirements.txt | 깃허브 Actions 구동에 필요한 라이브러리 설치 목록 | 지승우 | 
 
 # 2. Supabase 테이블 목록 
