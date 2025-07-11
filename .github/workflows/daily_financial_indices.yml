@@ -2,7 +2,7 @@ name: Daily Financial Indices Update
 
 on:
   schedule:
-    - cron: '0 7 * * *' # UTC 기준 07:00 (한국 기준 오후 16:00)
+    - cron: '0 21 * * *' # UTC 기준 매일 21:00 (한국 시간 오전 06:00)
   workflow_dispatch: # 수동 실행을 위한 옵션
 
 jobs:
