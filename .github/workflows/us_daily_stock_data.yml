@@ -1,9 +1,9 @@
-name: Daily Korea.S Stock Data Update
+name: Daily US Stock Data Update
 
 on:
   workflow_dispatch: # 수동 실행을 위한 옵션
   schedule:
-    - cron: '0 7 * * *' # UTC 기준 매일 21:00 (한국 시간 오전 06:00)
+    - cron: '0 21 * * *' # UTC 기준 매일 21:00 (한국 시간 오전 06:00)
 
 jobs:
   build:
@@ -25,4 +25,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python 주식데이터/한국_주식추출_매일_jsw.py
+        run: python 주식데이터/미국_주식추출_매일_jsw.py
