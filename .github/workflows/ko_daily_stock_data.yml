@@ -1,7 +1,7 @@
 #매일 주식 데이터를 자동 업로드하는 용도
 # .github/workflows/stock_data_fetch.yml
 
-name: Fetch Daily Stock Data
+name: Daily Korea.S Stock Data Update
 
 on:
   workflow_dispatch: # 수동 실행을 위한 옵션
