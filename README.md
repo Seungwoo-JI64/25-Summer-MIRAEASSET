@@ -9,6 +9,13 @@
 
 .
    
+| ko_news_scraping | 폴더 | 지승우 |  
+|---|---|---|   
+| Dockerfile | Render 최종_국내뉴스요약_jsw.py 실행환경 이미지 생성 | 지승우 |  
+| requirements.txt | Render 최종_국내뉴스요약_jsw.py 라이브러리 설치 | 지승우 | 
+| 최종_국내뉴스요약_jsw.py | Render를 이용하여 매일 UTC+9 8시 금융 뉴스 요약 및 임베딩 자동화 | 지승우 |
+.
+   
 | news_scraping | 폴더 | 지승우 |  
 |---|---|---|   
 | Dockerfile | Render 최종_영문뉴스요약_jsw.py 실행환경 이미지 생성 | 지승우 |  
