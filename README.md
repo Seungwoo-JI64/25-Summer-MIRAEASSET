@@ -70,7 +70,7 @@
 
 . 
 
-### financial_news_summart : 야후 금융 뉴스 추출 요약 및 임베딩
+### financial_news_summary, ko_financial_news_summary : 야후, 연합뉴스 금융 뉴스 추출 요약 및 임베딩
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | id | 자료 저장 순서 | int8 |  
