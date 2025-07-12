@@ -3,7 +3,7 @@ name: Daily Korea.S Stock Data Update
 on:
   workflow_dispatch: # 수동 실행을 위한 옵션
   schedule:
-    - cron: '0 7 * * *' # UTC 기준 매일 21:00 (한국 시간 오전 06:00)
+    - cron: '0 21 * * *' # UTC 기준 매일 21:00 (한국 시간 오전 06:00)
 
 jobs:
   build:
