@@ -345,7 +345,7 @@ try:
     print("☁️ Supabase에 연결하여 기존 데이터를 확인합니다.")
 
     # DB에 저장된 모든 'title' 목록을 가져오기
-    response = supabase.table('financial_news_summary').select('title').execute()
+    response = supabase.table('ko_financial_news_summary').select('title').execute()
     existing_titles = {item['title'] for item in response.data}
     print(f"현재 DB에 {len(existing_titles)}개의 기사가 있습니다.")
 
