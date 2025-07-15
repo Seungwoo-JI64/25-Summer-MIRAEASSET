@@ -10,3 +10,4 @@ python-dateutil
 supabase
 yfinance
 google-genai
+pytz
