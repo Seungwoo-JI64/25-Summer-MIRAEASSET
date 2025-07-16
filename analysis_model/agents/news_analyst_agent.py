@@ -600,10 +600,12 @@ def select_top_news_with_gemini(
             raise ValueError("응답에서 유효한 JSON 객체를 찾을 수 없습니다.")
 
         
-        print(f"Gemini가 선택한 뉴스 인덱스: {result['selected_indices']}")
-        return result['selected_indices']
+        print(f"Gemini가 선택한 뉴스 정보: {result['selected_news']}")
+        return result['selected_news']
+
     except Exception as e:
         print(f"Gemini API 호출 또는 JSON 파싱 중 에러 발생: {e}")
+        # 실패 시에도 성공 시와 동일한 데이터 구조를 반환하는 것은 매우 중요합니다.
         fallback_result = [
             {"index": i, "related_tickers": []} for i in range(min(3, len(news_list)))
         ]
@@ -668,3 +670,5 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
 
     # 4. 분석된 최종 결과를 상태(State)에 추가하여 반환합니다.
     return {"selected_news": final_news_list}
+
+
