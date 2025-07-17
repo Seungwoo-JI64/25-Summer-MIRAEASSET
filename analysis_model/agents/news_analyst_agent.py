@@ -51,7 +51,7 @@ supabase: Client = create_client(url, key)
 
 # 프로그램 시작 시 한 번만 데이터를 로드하고 전처리하여 효율성을 높입니다.
 print("Supabase에서 기업 및 뉴스 데이터 로딩 및 전처리를 시작합니다...")
-df_company = pd.DataFrame(supabase.table("company_summary").select("company_name,summary, summary_embedding").execute().data)
+df_company = pd.DataFrame(supabase.table("company_summary").select("company_name,ticker, summary, summary_embedding").execute().data)
 df_news = pd.DataFrame(supabase.table("financial_news_summary").select("title, url, summary, embedding, created_at").execute().data)
 df_news['date'] = pd.to_datetime(df_news['created_at']).dt.date
 df_news.drop(columns=['created_at'], inplace=True)
@@ -492,6 +492,7 @@ METRICS_MAP = {
 def search_relevant_news_rag(company_name: str) -> List[Dict[str, str]]:
     """
     Supabase에 저장된 벡터를 사용하여, 특정 기업 설명과 가장 유사한 뉴스 15개를 검색합니다.
+    이때 검색 대상 기업의 티커를 모든 뉴스 결과에 포함하여 반환합니다.
     """
     print(f"🔍 [News Analyst] Supabase 벡터 검색으로 '{company_name}' 관련 뉴스 15개를 검색합니다.")
 
@@ -502,8 +503,12 @@ def search_relevant_news_rag(company_name: str) -> List[Dict[str, str]]:
             print(f"경고: DB에서 '{company_name}' 기업 정보를 찾을 수 없습니다.")
             return []
 
-        # 2. 해당 기업의 임베딩 벡터를 가져옵니다.
+        # --- [수정된 부분 1: 티커 정보 조회] ---
+        # 2. 해당 기업의 임베딩 벡터와 '티커'를 가져옵니다.
         company_vec = company_row.iloc[0]['embedding_array'].reshape(1, -1)
+        company_ticker = company_row.iloc[0]['ticker'] # 검색 대상 기업의 티커를 변수에 저장
+        # --- [수정 끝] ---
+
 
         # 3. 전체 뉴스의 임베딩 벡터들과 코사인 유사도를 한 번에 계산합니다.
         news_embeddings = np.vstack(df_news['embedding_array'].values)
@@ -512,11 +517,17 @@ def search_relevant_news_rag(company_name: str) -> List[Dict[str, str]]:
         # 4. 계산된 유사도 점수가 가장 높은 상위 15개 뉴스의 인덱스를 찾습니다.
         top_indices = similarities.argsort()[-15:][::-1]
 
-        # 5. 해당 인덱스의 뉴스 정보(제목, 요약, URL)를 추출합니다.
+        # 5. 해당 인덱스의 뉴스 정보(제목, 요약, URL 등)를 추출합니다.
         top_news_df = df_news.iloc[top_indices][['title', 'summary', 'url', 'date']]
 
-        # 6. 결과를 AI가 처리하기 쉬운 List[Dict] 형태로 변환하여 반환합니다.
-        return top_news_df.to_dict('records')
+        # --- [수정된 부분 2: 조회한 티커 추가] ---
+        # 6. 검색된 모든 뉴스(DataFrame)에 검색 대상 기업의 티커를 새로운 컬럼으로 추가합니다.
+        top_news_df['ticker'] = company_ticker
+        # --- [수정 끝] ---
+
+        # 7. 결과를 AI가 처리하기 쉬운 List[Dict] 형태로 변환하여 반환합니다.
+        #    컬럼 순서를 조정하여 ticker가 앞에 오게 합니다.
+        return top_news_df[['ticker', 'title', 'summary', 'url', 'date']].to_dict('records')
 
     except Exception as e:
         print(f"RAG 뉴스 검색 중 오류가 발생했습니다: {e}")
@@ -530,85 +541,135 @@ def search_relevant_news_rag(company_name: str) -> List[Dict[str, str]]:
 # 뉴스 제목이 아니라 뉴스 목록의 인덱스를 반환하도록 한다.
 # 프롬프트에는 기업명 뿐만이 아니라 기업의 설명, 여러 지표 목록과 이에 대응되는 ticker들을 넣어야 한다.
 def select_top_news_with_gemini(
-    company_name: str, # 내가 보고자 하는 기업 이름
-    company_description: str, #내가 보고자 하는 기업의 설명
-    news_list: List[Dict[str, str]], # RAG로 검색된 뉴스 목록
-    us_entities_for_prompt: List[str] # METRICS_MAP - 미국 기업/지표 목록 (티커 형태로)
+    company_name: str,
+    company_description: str,
+    news_list: List[Dict[str, str]],
+    # us_entities_for_prompt는 이제 "이름 (티커)" 형식의 리스트를 받습니다.
+    us_entities_for_prompt: List[str]
 ) -> List[Dict[str, Any]]:
     """
     Gemini AI를 사용하여 뉴스 3개를 선별하고, 관련된 미국 기업/지표의 티커를 추출합니다.
-
-    출력:
-        List[Dict[str, Any]]: 선택된 뉴스 3개의 정보.
-        예: [{"index": 1, "related_tickers": ["NVDA"]}, {"index": 2, "related_tickers": ["^NDX"]}]
     """
     print("[News Analyst] Gemini AI를 호출하여 15개 뉴스 중 핵심 뉴스 3개를 선별합니다.")
 
-    entities_prompt_list = ", ".join(f'"{name}"' for name in us_entities_for_prompt) # METRICS_MAP에서 name만 추출한다.
+    # "이름 (티커)" 형식의 리스트를 프롬프트에 넣기 좋게 문자열로 변환합니다.
+    entities_prompt_list = ", ".join(f'"{item}"' for item in us_entities_for_prompt)
 
-    # Gemini에 전달할 프롬프트를 구성합니다.
-    # 뉴스 목록 전체를 전달하고, 가장 영향력 있는 3개를 골라달라고 요청합니다.
+    # --- [수정] 프롬프트를 좀 더 강하고 명확하게 수정하여 AI가 다른 텍스트를 생성하지 않도록 유도 ---
     prompt_parts = [
-        f"You are an expert analyst. Your task is to find connections between news about a specific target company ({company_name}) and a predefined list of US companies and indices.",
+        f"You are a silent JSON-generating robot. Your sole purpose is to return a valid JSON object based on the instructions.",
+        f"Analyze news about the target company ({company_name}) and connect it to a predefined list of US entities.",
         "\n### TARGET COMPANY INFORMATION ###",
         f"Company Name: {company_name}",
         f"Company Description: {company_description}",
         "\n### INSTRUCTIONS ###",
-        "1. From the 'TARGET COMPANY NEWS LIST' below, select the 3 most important news articles.",
-        "2. For EACH of the 3 selected news, identify the 1 or 2 MOST relevant US companies or indices from the 'US ENTITY LIST'.",
-        "3. Return your answer ONLY as a single JSON object. The object must contain a key 'selected_news', which is a list of objects. Each object must have two keys: 'index' (integer) and 'related_tickers' (a list of 1-2 ticker strings that correspond to the names in the US ENTITY LIST).",
-        "\n### US ENTITY LIST (Find connections to these) ###",
+        "1. From the 'TARGET COMPANY NEWS LIST' below, select the 3 most impactful news articles.",
+        "2. For EACH of the 3 selected news, identify 1-2 MOST relevant tickers from the 'US ENTITY LIST'. The ticker is inside the parentheses `()`. ",
+        "3. **You MUST return your answer ONLY as a single, valid JSON object.**",
+        "4. **DO NOT include any other text, explanation, or markdown like ```json. Your entire response must be ONLY the JSON object itself, starting with `{` and ending with `}`.**",
+        "\n### US ENTITY LIST (Name (Ticker)) ###",
+        # 이제 "NVIDIA (NVDA)" 와 같은 명확한 정보가 AI에게 제공됩니다.
         f"[{entities_prompt_list}]",
-        "\n### EXAMPLE OUTPUT FORMAT ###",
-        # AI가 이름(e.g., NVIDIA)을 보고 Ticker(e.g., "NVDA")를 반환하도록 예시를 명확히 합니다.
-        "{\"selected_news\": [{\"index\": 1, \"related_tickers\": [\"NVDA\"]}, {\"index\": 2, \"related_tickers\": [\"^NDX\", \"USDKRW=X\"]}]}",
+        "\n### OUTPUT FORMAT EXAMPLE ###",
+        # 예시를 통해 AI가 반환해야 할 형식을 다시 한번 명확히 보여줍니다.
+        "{\"selected_news\": [{\"index\": 1, \"related_tickers\": [\"NVDA\"]}, {\"index\": 2, \"related_tickers\": [\"^NDX\", \"USDKRW=X\"]}, {\"index\": 8, \"related_tickers\": [\"MSFT\"]}]}",
         "\n--- TARGET COMPANY NEWS LIST ---\n"
     ]
+    # --- [프롬프트 수정 끝] ---
 
     # 15개의 뉴스 항목을 프롬프트에 추가합니다.
     for i, news in enumerate(news_list):
+        # 이제 news 딕셔너리에 ticker가 있지만, AI의 혼동을 막기 위해 프롬프트에는 넣지 않는 것이 좋습니다.
+        # AI는 오직 US ENTITY LIST에서만 티커를 선택해야 합니다.
         prompt_parts.append(f"[{i}] Title: {news['title']}\nSummary: {news['summary']}\n")
     prompt = "\n".join(prompt_parts)
 
-    # API 작동
     try:
-        contents = [
-            types.Content(
-                role="user",
-                parts=[
-                    types.Part.from_text(text=prompt) #프롬프트 입력
-                ]
-            )
-        ]
+        # API 키를 환경 변수에서 가져옵니다.
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
 
-        # Gemini API를 호출하여 응답을 받습니다.
+        client = genai.Client(api_key=api_key)
         model = "gemini-2.5-flash"
-        response_stream = client.generate_content(model=model, contents=contents, stream=True)
+        contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])] 
+        
+        # 이전 예시 코드의 generate_content_config 형식을 따릅니다.
+        generate_content_config = types.GenerateContentConfig(
+            thinking_config = types.ThinkingConfig(
+                thinking_budget=-1,
+            ),
+            tools=[
+                types.Tool(googleSearch=types.GoogleSearch()), # 예시 코드에 포함된 도구
+            ],
+            response_mime_type="text/plain", # JSON을 텍스트로 받으므로 plain text
+        )
 
-        # 모델의 응답(JSON)을 파싱합니다.
-        # 응답 텍스트에서 첫 '{'와 마지막 '}'를 찾아 그 사이의 문자열을 파싱합니다.
+        # generate_content_stream 호출로 변경하고 stream=True 인자를 제거합니다.
+        response_stream = client.models.generate_content_stream( 
+            model=model, 
+            contents=contents, 
+            config=generate_content_config,
+        )
+
         response_text = ""
         for chunk in response_stream:
             response_text += chunk.text
+            
+        # --- [추가] AI의 원본 응답을 확인하기 위한 디버깅 코드 ---
+        print("\n" + "="*40)
+        print(">>> Gemini API Raw Response (for Debugging) <<<")
+        print(response_text)
+        print("="*40 + "\n")
+        # --- [디버깅 코드 추가 끝] ---
 
-        start_index = response_text.find('{')
-        end_index = response_text.rfind('}') + 1
-        if start_index != -1 and end_index != 0:
-            json_string = response_text[start_index:end_index]
+        # --- [수정] JSON 파싱 로직을 더 안정적으로 변경하고, 실패 시 상세 에러를 출력 ---
+        try:
+            # 모델이 응답 앞뒤에 ```json ... ``` 같은 마크다운을 붙이는 경우가 많습니다.
+            if '```json' in response_text:
+                # 마크다운 블록이 있다면 그 안의 내용만 추출합니다.
+                # rfind를 사용하여 마지막 ```json을 찾고, 그 이후 첫 ```을 찾습니다.
+                start_marker = '```json'
+                end_marker = '```'
+                start_index = response_text.rfind(start_marker)
+                
+                if start_index != -1:
+                    json_candidate = response_text[start_index + len(start_marker):]
+                    end_index = json_candidate.find(end_marker)
+                    if end_index != -1:
+                        json_string = json_candidate[:end_index].strip()
+                    else: # 닫는 마크다운이 없는 경우, 끝까지 사용
+                        json_string = json_candidate.strip()
+                else: # ```json 마커가 없는 경우
+                    json_string = response_text.strip()
+            else: # 마크다운이 없는 경우, 기존 로직 사용
+                start_index = response_text.find('{')
+                end_index = response_text.rfind('}') + 1
+                if start_index != -1 and end_index > start_index:
+                    json_string = response_text[start_index:end_index]
+                else:
+                    # 응답에서 JSON 객체의 시작과 끝을 찾을 수 없는 경우
+                    raise ValueError("Could not find a valid JSON object structure in the response.")
+
             result = json.loads(json_string)
-        else:
-            raise ValueError("응답에서 유효한 JSON 객체를 찾을 수 없습니다.")
+            
+            # 응답 구조가 예상과 맞는지 한 번 더 확인합니다.
+            if 'selected_news' not in result or not isinstance(result['selected_news'], list):
+                 raise ValueError("JSON is valid, but the 'selected_news' key is missing or not a list.")
 
-        
-        print(f"Gemini가 선택한 뉴스 정보: {result['selected_news']}")
-        return result['selected_news']
+            print(f"Gemini가 성공적으로 파싱한 뉴스 정보: {result['selected_news']}")
+            return result['selected_news']
+            
+        except (json.JSONDecodeError, IndexError, ValueError) as e:
+            # JSON 파싱 과정에서 어떤 종류의 에러가 발생했는지 명확히 출력합니다.
+            print(f"!!! [ERROR] Failed to parse JSON from Gemini's response. Reason: {e}")
+            # 여기서 에러를 다시 발생시켜 바깥쪽 except 블록이 비상 모드를 실행하도록 합니다.
+            raise
+        # --- [파싱 로직 수정 끝] ---
 
     except Exception as e:
-        print(f"Gemini API 호출 또는 JSON 파싱 중 에러 발생: {e}")
-        # 실패 시에도 성공 시와 동일한 데이터 구조를 반환하는 것은 매우 중요합니다.
-        fallback_result = [
-            {"index": i, "related_tickers": []} for i in range(min(3, len(news_list)))
-        ]
+        print(f"Gemini API 호출 또는 응답 처리 중 에러 발생: {e}")
+        fallback_result = [{"index": i, "related_tickers": []} for i in range(min(3, len(news_list)))]
         print(f"비상 모드: 가장 관련성 높은 뉴스 {len(fallback_result)}개를 임시로 선택합니다.")
         return fallback_result
 
@@ -627,11 +688,13 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
     if not candidate_news:
         return {"selected_news": []} # 검색된 뉴스 없으면 빈 리스트 반환
     
-    # 2. Gemini 프롬프트에 사용할 미국 기업/지표 이름 목록과, Ticker를 찾기 위한 역방향 맵 생성
-    us_entities_for_prompt = [v["name"] for v in METRICS_MAP.values()]
-    reverse_metrics_map = {v["name"]: k for k, v in METRICS_MAP.items()}
+    # 2. Gemini 프롬프트에 사용할 미국 기업/지표 목록을 "이름 (티커)" 형식으로 생성합니다.
+    #    AI가 이름과 티커를 명확하게 매칭할 수 있도록 정보를 함께 제공합니다.
+    #    예: ["NVIDIA (NVDA)", "S&P 500 지수 (^GSPC)", ...]
+    us_entities_for_prompt = [f"{v['name']} ({k})" for k, v in METRICS_MAP.items()]
+    # reverse_metrics_map은 더 이상 필요하지 않으므로 삭제하거나 주석 처리할 수 있습니다.
     
-    # 3. Gemini를 통해 뉴스 3개 선별 및 관련 미국 기업/지표 Ticker 추출
+     # 3. Gemini를 통해 뉴스 3개 선별 및 관련 미국 기업/지표 Ticker 추출
     selected_news_data = select_top_news_with_gemini(
         company_name, company_description, candidate_news, us_entities_for_prompt
     )
@@ -662,13 +725,10 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
             "title": news_item["title"],
             "url": news_item["url"],
             "summary": news_item["summary"],
-            "entities": entity_names,         # 기업 이름 목록
-            "related_metrics": related_tickers, # AI가 사용할 Ticker 목록
+            "entities": entity_names,
+            "related_metrics": related_tickers,
         }
         final_news_list.append(selected_news_item)
         print(f"  - 뉴스 선별: \"{news_item['title']}\" (연관 Ticker: {related_tickers})")
 
-    # 4. 분석된 최종 결과를 상태(State)에 추가하여 반환합니다.
     return {"selected_news": final_news_list}
-
-
