@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 주식 포트폴리오 - 미래에셋</title>
+    <!-- 구글 폰트 Noto Sans KR 임포트 (한글 가독성 향상) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN 임포트 (그래프를 그리기 위함) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* 미래에셋 스타일 변수 정의 */
+        :root {
+            --mirae-main-orange: #FF6D00; /* 미래에셋의 시그니처 오렌지 */
+            --mirae-dark-blue: #002D62;   /* 포인트 남색 계열 */
+            --mirae-text-dark: #333333;   /* 일반 텍스트 색상 */
+            --mirae-text-light: #666666;  /* 보조 텍스트 색상 */
+            --mirae-bg-light: #f9f9f9;    /* 섹션 배경색 (아주 연한 회색) */
+            --mirae-border-light: #e9e9e9;/* 경계선 색상 */
+            --mirae-positive: #28a745;    /* 상승 (초록색) */
+            --mirae-negative: #dc3545;    /* 하락 (빨간색) */
+            --mirae-hover-blue-light: #e6f3ff; /* 테이블 로우 호버 시 연한 파랑 */
+            --mirae-light-orange-bg: #fffaf0; /* 뉴스 영역 배경의 아주 연한 오렌지 */
+            --mirae-light-orange-border: #ffe0b2; /* 뉴스 영역 경계선의 연한 오렌지 */
+
+            /* 그래프 라인 색상 (미래에셋 느낌으로 추가) */
+            --chart-line-color-1: #FF6D00; /* 오렌지 */
+            --chart-line-color-2: #002D62; /* 남색 */
+            --chart-line-color-3: #1A936F; /* 녹색 */
+            --chart-line-color-4: #60499C; /* 보라색 */
+            --chart-line-color-5: #FFC107; /* 노란색 */
+        }
+
+        /* 기본 스타일 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif; /* 한글 폰트 우선 적용 */
+            margin: 0;
+            padding: 0;
+            background-color: var(--mirae-bg-light); /* 연한 회색 배경 */
+            color: var(--mirae-text-dark);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased; /* 폰트 부드럽게 */
+            -moz-osx-font-smoothing: grayscale; /* 폰트 부드럽게 */
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 10px; /* 약간 더 둥근 모서리 */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08); /* 그림자 강화 */
+        }
+
+        /* 헤더 */
+        .header {
+            background-color: var(--mirae-dark-blue); /* 남색 배경 */
+            color: #ffffff;
+            padding: 25px 0;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 5px solid var(--mirae-main-orange); /* 오렌지색 하단 경계선 */
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.8em;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -1px; /* 자간 조절 */
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .header h1 span {
+            font-size: 0.6em;
+            display: block;
+            opacity: 0.8;
+            font-weight: 300;
+            margin-top: 5px;
+        }
+
+        /* 섹션 제목 (h1, h2) */
+        h1 { /* 페이지 내 주요 제목 (예: 내 주식 포트폴리오) */
+            text-align: center;
+            color: var(--mirae-dark-blue); /* 남색 */
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            border-bottom: 3px solid var(--mirae-border-light); /* 연한 회색 줄 */
+            padding-bottom: 15px;
+        }
+        h2 {
+            color: var(--mirae-dark-blue); /* 남색 */
+            border-bottom: 2px solid var(--mirae-border-light);
+            padding-bottom: 12px;
+            margin-top: 40px;
+            margin-bottom: 25px;
+            font-size: 2em;
+            font-weight: 500;
+        }
+
+        /* 포트폴리오 요약 섹션 */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+        .summary-card {
+            background-color: #ffffff;
+            border: 1px solid var(--mirae-border-light);
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease-in-out;
+        }
+        .summary-card:hover {
+            transform: translateY(-5px); /* 호버 시 살짝 위로 */
+        }
+        .summary-card strong {
+            display: block;
+            font-size: 1.1em;
+            color: var(--mirae-text-dark);
+            margin-bottom: 12px;
+            font-weight: 400;
+        }
+        .summary-card .value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--mirae-dark-blue); /* 평가금액 등은 남색 */
+            letter-spacing: -0.5px;
+        }
+        .summary-card .value.positive {
+            color: var(--mirae-positive);
+        }
+        .summary-card .value.negative {
+            color: var(--mirae-negative);
+        }
+
+        /* 보유 주식 테이블 */
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            font-size: 0.95em;
+        }
+        .stock-table th, .stock-table td {
+            border: 1px solid var(--mirae-border-light);
+            padding: 15px;
+            text-align: left;
+        }
+        .stock-table th {
+            background-color: var(--mirae-dark-blue); /* 남색 헤더 */
+            color: white;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .stock-table tbody tr:nth-child(even) {
+            background-color: #fcfcfc; /* 짝수 행 배경색 */
+        }
+        .stock-table tbody tr:hover {
+            background-color: var(--mirae-hover-blue-light); /* 미래에셋 느낌의 연한 파랑 호버 */
+        }
+        .stock-table .text-right {
+            text-align: right;
+        }
+        .stock-table .profit {
+            color: var(--mirae-positive);
+            font-weight: 500;
+        }
+        .stock-table .loss {
+            color: var(--mirae-negative);
+            font-weight: 500;
+        }
+
+        /* 클릭 가능한 종목명 */
+        .stock-name-link {
+            cursor: pointer;
+            color: var(--mirae-main-orange); /* 오렌지색 링크 */
+            text-decoration: none; /* 초기 밑줄 제거 */
+            font-weight: 600; /* 좀 더 강조 */
+            transition: color 0.2s ease-in-out;
+        }
+        .stock-name-link:hover {
+            color: #cc5700; /* 호버 시 오렌지색 진하게 */
+            text-decoration: underline; /* 호버 시 밑줄 추가 */
+        }
+
+        /* 뉴스 표시 영역 */
+        #news-display-area {
+            margin-top: 60px;
+            padding: 30px;
+            background-color: var(--mirae-light-orange-bg); /* 아주 연한 오렌지 계열 배경 */
+            border-radius: 8px;
+            border: 1px solid var(--mirae-light-orange-border); /* 연한 오렌지 경계선 */
+            display: none; /* 초기에는 숨김 */
+        }
+        #news-display-area h3 {
+            color: var(--mirae-dark-blue); /* 남색 제목 */
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            border-bottom: 1px dashed var(--mirae-light-orange-border); /* 연한 오렌지 점선 */
+            padding-bottom: 10px;
+            font-weight: 500;
+        }
+        .news-item {
+            background-color: #ffffff;
+            border: 1px solid var(--mirae-border-light);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03); /* 은은한 그림자 */
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        .news-item:hover {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* 호버 시 그림자 강화 */
+        }
+        .news-item h4 {
+            color: var(--mirae-text-dark);
+            font-size: 1.25em;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .news-item p {
+            font-size: 0.9em;
+            color: var(--mirae-text-light);
+            line-height: 1.7;
+        }
+        .news-item .tickers {
+            font-size: 0.85em;
+            color: var(--mirae-main-orange); /* 오렌지색 티커 */
+            margin-top: 15px;
+            font-weight: 700;
+        }
+
+        /* 그래프 영역 */
+        .chart-container {
+            width: 100%;
+            max-width: 900px; /* 차트 최대 너비 */
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        .chart-container h3 {
+            text-align: center;
+            color: var(--mirae-dark-blue);
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--mirae-border-light);
+            padding-bottom: 15px;
+        }
+
+
+        /* 푸터 */
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 25px 0;
+            border-top: 1px solid var(--mirae-border-light);
+            color: var(--mirae-text-light);
+            font-size: 0.85em;
+            background-color: #fcfcfc; /* 푸터 배경도 약간 연하게 */
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: var(--mirae-dark-blue); /* 남색 링크 */
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>미래에셋 증권 <span>Smart Portfolio</span></h1>
+    </div>
+
+    <div class="container">
+        <h1>📈 내 주식 포트폴리오</h1>
+
+        <!-- 포트폴리오 요약 섹션 (예시 데이터) -->
+        <h2>💰 포트폴리오 요약</h2>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <strong>총 투자 금액</strong>
+                <div class="value">10,000,000 원</div>
+            </div>
+            <div class="summary-card">
+                <strong>현재 평가 금액</strong>
+                <div class="value">10,550,000 원</div>
+            </div>
+            <div class="summary-card">
+                <strong>총 손익 (원)</strong>
+                <div class="value positive">+550,000 원</div>
+            </div>
+            <div class="summary-card">
+                <strong>총 손익 (%)</strong>
+                <div class="value positive">+5.50 %</div>
+            </div>
+        </div>
+
+        <!-- 포트폴리오 성과 그래프 -->
+        <div class="chart-container">
+            <h3>📈 포트폴리오 수익률 변화</h3>
+            <canvas id="portfolioPerformanceChart"></canvas>
+        </div>
+
+
+        <!-- 보유 주식 목록 섹션 (예시 데이터) -->
+        <h2>📊 내 보유 주식</h2>
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th>종목명</th>
+                    <th>티커</th>
+                    <th>보유 수량</th>
+                    <th>평균 단가</th>
+                    <th>현재가</th>
+                    <th>평가 손익 (원)</th>
+                    <th>평가 손익 (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="stock-name-link" data-ticker="NVDA">엔비디아</span></td>
+                    <td>NVDA</td>
+                    <td class="text-right">10 주</td>
+                    <td class="text-right">120,000 원</td>
+                    <td class="text-right">135,000 원</td>
+                    <td class="text-right profit">+150,000 원</td>
+                    <td class="text-right profit">+12.50 %</td>
+                </tr>
+                <tr>
+                    <td><span class="stock-name-link" data-ticker="AAPL">애플</span></td>
+                    <td>AAPL</td>
+                    <td class="text-right">5 주</td>
+                    <td class="text-right">180,000 원</td>
+                    <td class="text-right">175,000 원</td>
+                    <td class="text-right loss">-25,000 원</td>
+                    <td class="text-right loss">-2.78 %</td>
+                </tr>
+                <tr>
+                    <td><span class="stock-name-link" data-ticker="MSFT">마이크로소프트</span></td>
+                    <td>MSFT</td>
+                    <td class="text-right">8 주</td>
+                    <td class="text-right">400,000 원</td>
+                    <td class="text-right">410,000 원</td>
+                    <td class="text-right profit">+80,000 원</td>
+                    <td class="text-right profit">+2.50 %</td>
+                </tr>
+                <!--
+                여기에 더 많은 보유 주식을 추가할 수 있습니다.
+                클릭 기능을 추가하려면 <td><span class="stock-name-link" data-ticker="[티커명]">종목명</span></td> 형식으로 변경하세요.
+                주의: 아래 예시들은 클릭 기능이 없습니다 (span 태그 미적용).
+                -->
+                <tr>
+                    <td>테슬라</td>
+                    <td>TSLA</td>
+                    <td class="text-right">3 주</td>
+                    <td class="text-right">250,000 원</td>
+                    <td class="text-right">230,000 원</td>
+                    <td class="text-right loss">-60,000 원</td>
+                    <td class="text-right loss">-8.00 %</td>
+                </tr>
+                <tr>
+                    <td>구글 (알파벳 A)</td>
+                    <td>GOOGL</td>
+                    <td class="text-right">2 주</td>
+                    <td class="text-right">150,000 원</td>
+                    <td class="text-right">160,000 원</td>
+                    <td class="text-right profit">+20,000 원</td>
+                    <td class="text-right profit">+6.67 %</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 뉴스 표시 영역 -->
+        <div id="news-display-area">
+            <!-- JavaScript로 내용이 채워질 곳 -->
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2023 미래에셋증권. All rights reserved.</p>
+        <p>투자유의사항: 본 자료는 투자자의 투자를 돕기 위하여 작성된 것이며, 어떠한 경우에도 불법적인 자료 배포 또는 유출 등으로 이용할 수 없습니다.</p>
+        <p><a href="#">개인정보처리방침</a> | <a href="#">이용약관</a></p>
+    </div>
+
+    <script>
+        // Python에서 생성된 뉴스 데이터를 JavaScript 변수로 임베드될 부분
+        const allCompanyNewsData = {
+  "NVDA": {
+    "company_name": "엔비디아",
+    "selected_news": [
+      {
+        "index": 0,
+        "related_tickers": []
+      },
+      {
+        "index": 1,
+        "related_tickers": []
+      },
+      {
+        "index": 2,
+        "related_tickers": []
+      }
+    ],
+    "full_news_list": [
+      {
+        "title": "엔비디아, 새로운 AI 칩 공개",
+        "summary": "엔비디아가 차세대 AI 프로세서를 발표하며 상당한 성능 향상을 약속했습니다."
+      },
+      {
+        "title": "TSMC, 엔비디아 칩 생산 확대",
+        "summary": "TSMC가 엔비디아의 수요에 맞춰 고급 반도체 생산을 늘릴 계획입니다."
+      },
+      {
+        "title": "AMD, AI 가속기 시장 경쟁 심화",
+        "summary": "AMD가 새로운 AI 가속기를 출시하며 엔비디아와의 경쟁을 예고했습니다."
+      },
+      {
+        "title": "엔비디아 주가 사상 최고치 경신",
+        "summary": "인공지능 붐에 힘입어 엔비디아 주가가 사상 최고치를 기록했습니다."
+      },
+      {
+        "title": "미국 규제, AI 칩 수출 제한 가능성",
+        "summary": "미국 정부가 AI 칩 수출에 대한 추가 규제를 검토 중이라는 소식이 전해졌습니다."
+      },
+      {
+        "title": "엔비디아, 자율주행 플랫폼 파트너십 확장",
+        "summary": "엔비디아가 여러 자동차 회사들과 자율주행 기술 협력을 강화하고 있습니다."
+      },
+      {
+        "title": "인텔, 파운드리 사업 확장",
+        "summary": "인텔이 파운드리 사업을 확장하여 TSMC와 엔비디아에 도전장을 내밀었습니다."
+      },
+      {
+        "title": "클라우드 서비스 기업, 엔비디아 GPU 대량 구매",
+        "summary": "주요 클라우드 서비스 제공업체들이 AI 인프라 구축을 위해 엔비디아 GPU를 대량으로 구매하고 있습니다."
+      },
+      {
+        "title": "엔비디아, 메타버스 관련 특허 출원 증가",
+        "summary": "메타버스 분야에서 엔비디아의 기술 특허 출원이 꾸준히 늘고 있습니다."
+      },
+      {
+        "title": "기술주 전반 하락, 엔비디아도 영향",
+        "summary": "미국 기술주 전반의 조정으로 엔비디아 주가도 일시적으로 하락했습니다."
+      },
+      {
+        "title": "새로운 게이밍 GPU 출시 임박",
+        "summary": "엔비디아의 새로운 게이밍 GPU 라인업 출시가 임박했다는 소문이 돌고 있습니다."
+      },
+      {
+        "title": "ARM, AI 칩 시장 진출 모색",
+        "summary": "ARM이 자체 AI 칩 설계를 통해 엔비디아 시장에 진입할 계획입니다."
+      },
+      {
+        "title": "AI 반도체 수요 폭발적 증가",
+        "summary": "글로벌 AI 반도체 시장이 예상보다 빠르게 성장하고 있습니다."
+      },
+      {
+        "title": "엔비디아, 소프트웨어 생태계 강화",
+        "summary": "하드웨어와 더불어 쿠다(CUDA) 등 소프트웨어 플랫폼을 강화하고 있습니다."
+      },
+      {
+        "title": "중국 시장, 엔비디아 칩 대체 움직임",
+        "summary": "미중 갈등으로 중국 기업들이 엔비디아 칩 대체품을 찾고 있다는 보도입니다."
+      }
+    ],
+    "historical_performance": [
+      {
+        "date": "2025-04-19",
+        "value": -4.73
+      },
+      {
+        "date": "2025-04-20",
+        "value": -4.73
+      },
+      {
+        "date": "2025-04-21",
+        "value": -4.73
+      },
+      {
+        "date": "2025-04-22",
+        "value": -4.73
+      },
+      {
+        "date": "2025-04-23",
+        "value": -4.72
+      },
+      {
+        "date": "2025-04-24",
+        "value": -4.72
+      },
+      {
+        "date": "2025-04-25",
+        "value": -4.72
+      },
+      {
+        "date": "2025-04-26",
+        "value": -4.71
+      },
+      {
+        "date": "2025-04-27",
+        "value": -4.71
+      },
+      {
+        "date": "2025-04-28",
+        "value": -4.72
+      },
+      {
+        "date": "2025-04-29",
+        "value": -4.71
+      },
+      {
+        "date": "2025-04-30",
+        "value": -4.71
+      },
+      {
+        "date": "2025-05-01",
+        "value": -4.71
+      },
+      {
+        "date": "2025-05-02",
+        "value": -4.71
+      },
+      {
+        "date": "2025-05-03",
+        "value": -4.71
+      },
+      {
+        "date": "2025-05-04",
+        "value": -4.71
+      },
+      {
+        "date": "2025-05-05",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-06",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-07",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-08",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-09",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-10",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-11",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-12",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-13",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-14",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-15",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-16",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-17",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-18",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-19",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-20",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-21",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-22",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-23",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-24",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-25",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-26",
+        "value": -4.72
+      },
+      {
+        "date": "2025-05-27",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-28",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-29",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-30",
+        "value": -4.73
+      },
+      {
+        "date": "2025-05-31",
+        "value": -4.73
+      },
+      {
+        "date": "2025-06-01",
+        "value": -4.73
+      },
+      {
+        "date": "2025-06-02",
+        "value": -4.73
+      },
+      {
+        "date": "2025-06-03",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-04",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-05",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-06",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-07",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-08",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-09",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-10",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-11",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-12",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-13",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-14",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-15",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-16",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-17",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-18",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-19",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-20",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-21",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-22",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-23",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-24",
+        "value": -4.75
+      },
+      {
+        "date": "2025-06-25",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-26",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-27",
+        "value": -4.73
+      },
+      {
+        "date": "2025-06-28",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-29",
+        "value": -4.74
+      },
+      {
+        "date": "2025-06-30",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-01",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-02",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-03",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-04",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-05",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-06",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-07",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-08",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-09",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-10",
+        "value": -4.75
+      },
+      {
+        "date": "2025-07-11",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-12",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-13",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-14",
+        "value": -4.74
+      },
+      {
+        "date": "2025-07-15",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-16",
+        "value": -4.73
+      },
+      {
+        "date": "2025-07-17",
+        "value": -4.73
+      }
+    ]
+  },
+  "AAPL": {
+    "company_name": "애플",
+    "selected_news": [
+      {
+        "index": 0,
+        "related_tickers": []
+      },
+      {
+        "index": 1,
+        "related_tickers": []
+      },
+      {
+        "index": 2,
+        "related_tickers": []
+      }
+    ],
+    "full_news_list": [
+      {
+        "title": "애플, 새로운 아이폰 16 발표",
+        "summary": "애플이 가을 이벤트에서 새로운 아이폰 16 모델을 공개했습니다."
+      },
+      {
+        "title": "애플 서비스 매출 급증",
+        "summary": "앱스토어, 애플 뮤직 등 서비스 부문 매출이 크게 증가하여 실적을 견인했습니다."
+      },
+      {
+        "title": "유럽연합, 애플 앱스토어 정책 조사",
+        "summary": "EU가 디지털 시장법(DMA) 위반 여부에 대해 애플 앱스토어를 조사 중입니다."
+      },
+      {
+        "title": "애플 워치, 건강 모니터링 기능 강화",
+        "summary": "차세대 애플 워치에 더욱 정교한 건강 모니터링 기능이 탑재될 예정입니다."
+      },
+      {
+        "title": "중국 시장 아이폰 판매 부진 우려",
+        "summary": "경쟁 심화와 경제 둔화로 중국 내 아이폰 판매가 어려움을 겪고 있습니다."
+      },
+      {
+        "title": "애플, AI 전략 구체화",
+        "summary": "애플이 온디바이스 AI 기능을 강화하는 새로운 iOS 업데이트를 발표했습니다."
+      },
+      {
+        "title": "비전 프로, 글로벌 출시 임박",
+        "summary": "애플의 공간 컴퓨팅 기기 비전 프로의 글로벌 출시가 가까워졌습니다."
+      },
+      {
+        "title": "맥북, 새로운 M4 칩 탑재",
+        "summary": "애플이 M4 칩을 탑재한 새로운 맥북 라인업을 선보였습니다."
+      },
+      {
+        "title": "애플 뮤직, 공간 오디오 기능 확대",
+        "summary": "애플 뮤직이 지원하는 공간 오디오 트랙 수가 대폭 늘어났습니다."
+      },
+      {
+        "title": "아이패드 프로, OLED 디스플레이 적용",
+        "summary": "새로운 아이패드 프로 모델에 고품질 OLED 디스플레이가 적용될 예정입니다."
+      },
+      {
+        "title": "애플, 자율주행차 프로젝트 재조정",
+        "summary": "애플의 자율주행차 프로젝트 '타이탄'이 내부적으로 방향을 재조정하고 있습니다."
+      },
+      {
+        "title": "주요 애널리스트, 애플 주가 목표치 상향",
+        "summary": "일부 투자은행이 애플의 실적 전망치를 높이며 목표 주가를 상향했습니다."
+      },
+      {
+        "title": "애플, 재생 에너지 투자 확대",
+        "summary": "환경 경영의 일환으로 재생 에너지 발전소에 대한 투자를 늘리고 있습니다."
+      },
+      {
+        "title": "서비스 구독자 수 10억 명 돌파",
+        "summary": "애플의 유료 서비스 구독자 수가 전 세계적으로 10억 명을 넘어섰습니다."
+      },
+      {
+        "title": "글로벌 스마트폰 시장 경쟁 심화",
+        "summary": "삼성, 샤오미 등 경쟁사들의 신제품 출시로 스마트폰 시장 경쟁이 뜨거워지고 있습니다."
+      }
+    ],
+    "historical_performance": [
+      {
+        "date": "2025-04-19",
+        "value": -3.95
+      },
+      {
+        "date": "2025-04-20",
+        "value": -3.94
+      },
+      {
+        "date": "2025-04-21",
+        "value": -3.94
+      },
+      {
+        "date": "2025-04-22",
+        "value": -3.94
+      },
+      {
+        "date": "2025-04-23",
+        "value": -3.93
+      },
+      {
+        "date": "2025-04-24",
+        "value": -3.93
+      },
+      {
+        "date": "2025-04-25",
+        "value": -3.94
+      },
+      {
+        "date": "2025-04-26",
+        "value": -3.93
+      },
+      {
+        "date": "2025-04-27",
+        "value": -3.92
+      },
+      {
+        "date": "2025-04-28",
+        "value": -3.93
+      },
+      {
+        "date": "2025-04-29",
+        "value": -3.95
+      },
+      {
+        "date": "2025-04-30",
+        "value": -3.97
+      },
+      {
+        "date": "2025-05-01",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-02",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-03",
+        "value": -3.95
+      },
+      {
+        "date": "2025-05-04",
+        "value": -3.93
+      },
+      {
+        "date": "2025-05-05",
+        "value": -3.93
+      },
+      {
+        "date": "2025-05-06",
+        "value": -3.93
+      },
+      {
+        "date": "2025-05-07",
+        "value": -3.94
+      },
+      {
+        "date": "2025-05-08",
+        "value": -3.94
+      },
+      {
+        "date": "2025-05-09",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-10",
+        "value": -3.95
+      },
+      {
+        "date": "2025-05-11",
+        "value": -3.95
+      },
+      {
+        "date": "2025-05-12",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-13",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-14",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-15",
+        "value": -3.95
+      },
+      {
+        "date": "2025-05-16",
+        "value": -3.94
+      },
+      {
+        "date": "2025-05-17",
+        "value": -3.95
+      },
+      {
+        "date": "2025-05-18",
+        "value": -3.97
+      },
+      {
+        "date": "2025-05-19",
+        "value": -3.97
+      },
+      {
+        "date": "2025-05-20",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-21",
+        "value": -3.98
+      },
+      {
+        "date": "2025-05-22",
+        "value": -3.98
+      },
+      {
+        "date": "2025-05-23",
+        "value": -3.99
+      },
+      {
+        "date": "2025-05-24",
+        "value": -3.98
+      },
+      {
+        "date": "2025-05-25",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-26",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-27",
+        "value": -3.96
+      },
+      {
+        "date": "2025-05-28",
+        "value": -3.95
+      },
+      {
+        "date": "2025-05-29",
+        "value": -3.97
+      },
+      {
+        "date": "2025-05-30",
+        "value": -3.97
+      },
+      {
+        "date": "2025-05-31",
+        "value": -3.99
+      },
+      {
+        "date": "2025-06-01",
+        "value": -3.97
+      },
+      {
+        "date": "2025-06-02",
+        "value": -3.99
+      },
+      {
+        "date": "2025-06-03",
+        "value": -4.0
+      },
+      {
+        "date": "2025-06-04",
+        "value": -4.01
+      },
+      {
+        "date": "2025-06-05",
+        "value": -4.0
+      },
+      {
+        "date": "2025-06-06",
+        "value": -4.02
+      },
+      {
+        "date": "2025-06-07",
+        "value": -4.02
+      },
+      {
+        "date": "2025-06-08",
+        "value": -4.03
+      },
+      {
+        "date": "2025-06-09",
+        "value": -4.02
+      },
+      {
+        "date": "2025-06-10",
+        "value": -4.01
+      },
+      {
+        "date": "2025-06-11",
+        "value": -4.01
+      },
+      {
+        "date": "2025-06-12",
+        "value": -4.01
+      },
+      {
+        "date": "2025-06-13",
+        "value": -4.02
+      },
+      {
+        "date": "2025-06-14",
+        "value": -4.02
+      },
+      {
+        "date": "2025-06-15",
+        "value": -4.0
+      },
+      {
+        "date": "2025-06-16",
+        "value": -4.0
+      },
+      {
+        "date": "2025-06-17",
+        "value": -3.99
+      },
+      {
+        "date": "2025-06-18",
+        "value": -4.0
+      },
+      {
+        "date": "2025-06-19",
+        "value": -4.0
+      },
+      {
+        "date": "2025-06-20",
+        "value": -3.98
+      },
+      {
+        "date": "2025-06-21",
+        "value": -3.97
+      },
+      {
+        "date": "2025-06-22",
+        "value": -3.96
+      },
+      {
+        "date": "2025-06-23",
+        "value": -3.97
+      },
+      {
+        "date": "2025-06-24",
+        "value": -3.96
+      },
+      {
+        "date": "2025-06-25",
+        "value": -3.96
+      },
+      {
+        "date": "2025-06-26",
+        "value": -3.95
+      },
+      {
+        "date": "2025-06-27",
+        "value": -3.95
+      },
+      {
+        "date": "2025-06-28",
+        "value": -3.94
+      },
+      {
+        "date": "2025-06-29",
+        "value": -3.96
+      },
+      {
+        "date": "2025-06-30",
+        "value": -3.97
+      },
+      {
+        "date": "2025-07-01",
+        "value": -3.96
+      },
+      {
+        "date": "2025-07-02",
+        "value": -3.95
+      },
+      {
+        "date": "2025-07-03",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-04",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-05",
+        "value": -3.93
+      },
+      {
+        "date": "2025-07-06",
+        "value": -3.93
+      },
+      {
+        "date": "2025-07-07",
+        "value": -3.92
+      },
+      {
+        "date": "2025-07-08",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-09",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-10",
+        "value": -3.95
+      },
+      {
+        "date": "2025-07-11",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-12",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-13",
+        "value": -3.94
+      },
+      {
+        "date": "2025-07-14",
+        "value": -3.95
+      },
+      {
+        "date": "2025-07-15",
+        "value": -3.96
+      },
+      {
+        "date": "2025-07-16",
+        "value": -3.96
+      },
+      {
+        "date": "2025-07-17",
+        "value": -3.95
+      }
+    ]
+  },
+  "MSFT": {
+    "company_name": "마이크로소프트",
+    "selected_news": [
+      {
+        "index": 0,
+        "related_tickers": []
+      },
+      {
+        "index": 1,
+        "related_tickers": []
+      },
+      {
+        "index": 2,
+        "related_tickers": []
+      }
+    ],
+    "full_news_list": [
+      {
+        "title": "마이크로소프트, 코파일럿 스튜디오 공개",
+        "summary": "마이크로소프트가 기업용 AI 도구 '코파일럿 스튜디오'를 발표했습니다."
+      },
+      {
+        "title": "애저 클라우드 매출, 두 자릿수 성장 유지",
+        "summary": "마이크로소프트의 클라우드 서비스 애저가 강력한 성장세를 이어가고 있습니다."
+      },
+      {
+        "title": "마이크로소프트, 게임 스튜디오 인수 완료",
+        "summary": "대형 게임 스튜디오 인수를 최종 완료하며 게임 부문을 강화했습니다."
+      },
+      {
+        "title": "AI 기술, 윈도우 12에 통합될 예정",
+        "summary": "차세대 윈도우 운영체제에 AI 기능이 대규모로 통합될 것으로 예상됩니다."
+      },
+      {
+        "title": "사티아 나델라 CEO, AI 시대 비전 제시",
+        "summary": "사티아 나델라 CEO가 인공지능이 가져올 미래 컴퓨팅 환경에 대한 비전을 발표했습니다."
+      },
+      {
+        "title": "클라우드 보안 시장 경쟁 심화",
+        "summary": "AWS, 구글 등과의 클라우드 보안 시장 경쟁이 더욱 치열해지고 있습니다."
+      },
+      {
+        "title": "마이크로소프트 팀즈 사용자 3억 명 돌파",
+        "summary": "협업 도구 마이크로소프트 팀즈의 월간 활성 사용자 수가 3억 명을 넘어섰습니다."
+      },
+      {
+        "title": "오픈AI와의 협력, 새로운 AI 모델 개발",
+        "summary": "오픈AI와의 파트너십을 통해 더욱 강력한 AI 모델을 공동 개발 중입니다."
+      },
+      {
+        "title": "링크드인, AI 기반 채용 기능 도입",
+        "summary": "링크드인이 AI를 활용한 맞춤형 채용 및 구직 기능을 선보였습니다."
+      },
+      {
+        "title": "마이크로소프트 365, 생산성 향상 AI 기능 추가",
+        "summary": "오피스 제품군에 AI 기반의 문서 작성 및 데이터 분석 기능이 추가되었습니다."
+      },
+      {
+        "title": "Xbox 게임 패스, 구독자 수 지속 증가",
+        "summary": "게임 구독 서비스 Xbox 게임 패스의 글로벌 구독자 수가 꾸준히 늘고 있습니다."
+      },
+      {
+        "title": "데이터센터 인프라 투자 확대",
+        "summary": "글로벌 AI 수요 증가에 맞춰 데이터센터 인프라 투자를 대폭 늘리고 있습니다."
+      },
+      {
+        "title": "챗봇 기술, 고객 서비스에 적용",
+        "summary": "마이크로소프트의 챗봇 기술이 기업 고객 서비스 솔루션에 활발히 적용되고 있습니다."
+      },
+      {
+        "title": "시장 점유율, 엔터프라이즈 소프트웨어 분야 압도적",
+        "summary": "마이크로소프트가 엔터프라이즈 소프트웨어 시장에서 압도적인 점유율을 유지하고 있습니다."
+      },
+      {
+        "title": "신흥 시장, 클라우드 서비스 도입 가속화",
+        "summary": "인도, 동남아 등 신흥 시장에서 마이크로소프트 클라우드 서비스 도입이 빠르게 증가하고 있습니다."
+      }
+    ],
+    "historical_performance": [
+      {
+        "date": "2025-04-19",
+        "value": 3.82
+      },
+      {
+        "date": "2025-04-20",
+        "value": 3.83
+      },
+      {
+        "date": "2025-04-21",
+        "value": 3.85
+      },
+      {
+        "date": "2025-04-22",
+        "value": 3.86
+      },
+      {
+        "date": "2025-04-23",
+        "value": 3.86
+      },
+      {
+        "date": "2025-04-24",
+        "value": 3.87
+      },
+      {
+        "date": "2025-04-25",
+        "value": 3.88
+      },
+      {
+        "date": "2025-04-26",
+        "value": 3.88
+      },
+      {
+        "date": "2025-04-27",
+        "value": 3.87
+      },
+      {
+        "date": "2025-04-28",
+        "value": 3.87
+      },
+      {
+        "date": "2025-04-29",
+        "value": 3.86
+      },
+      {
+        "date": "2025-04-30",
+        "value": 3.86
+      },
+      {
+        "date": "2025-05-01",
+        "value": 3.86
+      },
+      {
+        "date": "2025-05-02",
+        "value": 3.85
+      },
+      {
+        "date": "2025-05-03",
+        "value": 3.85
+      },
+      {
+        "date": "2025-05-04",
+        "value": 3.86
+      },
+      {
+        "date": "2025-05-05",
+        "value": 3.88
+      },
+      {
+        "date": "2025-05-06",
+        "value": 3.88
+      },
+      {
+        "date": "2025-05-07",
+        "value": 3.88
+      },
+      {
+        "date": "2025-05-08",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-09",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-10",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-11",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-12",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-13",
+        "value": 3.88
+      },
+      {
+        "date": "2025-05-14",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-15",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-16",
+        "value": 3.88
+      },
+      {
+        "date": "2025-05-17",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-18",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-19",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-20",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-21",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-22",
+        "value": 3.9
+      },
+      {
+        "date": "2025-05-23",
+        "value": 3.91
+      },
+      {
+        "date": "2025-05-24",
+        "value": 3.91
+      },
+      {
+        "date": "2025-05-25",
+        "value": 3.91
+      },
+      {
+        "date": "2025-05-26",
+        "value": 3.91
+      },
+      {
+        "date": "2025-05-27",
+        "value": 3.92
+      },
+      {
+        "date": "2025-05-28",
+        "value": 3.91
+      },
+      {
+        "date": "2025-05-29",
+        "value": 3.91
+      },
+      {
+        "date": "2025-05-30",
+        "value": 3.89
+      },
+      {
+        "date": "2025-05-31",
+        "value": 3.89
+      },
+      {
+        "date": "2025-06-01",
+        "value": 3.9
+      },
+      {
+        "date": "2025-06-02",
+        "value": 3.9
+      },
+      {
+        "date": "2025-06-03",
+        "value": 3.89
+      },
+      {
+        "date": "2025-06-04",
+        "value": 3.89
+      },
+      {
+        "date": "2025-06-05",
+        "value": 3.89
+      },
+      {
+        "date": "2025-06-06",
+        "value": 3.9
+      },
+      {
+        "date": "2025-06-07",
+        "value": 3.91
+      },
+      {
+        "date": "2025-06-08",
+        "value": 3.92
+      },
+      {
+        "date": "2025-06-09",
+        "value": 3.9
+      },
+      {
+        "date": "2025-06-10",
+        "value": 3.89
+      },
+      {
+        "date": "2025-06-11",
+        "value": 3.88
+      },
+      {
+        "date": "2025-06-12",
+        "value": 3.87
+      },
+      {
+        "date": "2025-06-13",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-14",
+        "value": 3.84
+      },
+      {
+        "date": "2025-06-15",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-16",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-17",
+        "value": 3.86
+      },
+      {
+        "date": "2025-06-18",
+        "value": 3.86
+      },
+      {
+        "date": "2025-06-19",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-20",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-21",
+        "value": 3.86
+      },
+      {
+        "date": "2025-06-22",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-23",
+        "value": 3.85
+      },
+      {
+        "date": "2025-06-24",
+        "value": 3.86
+      },
+      {
+        "date": "2025-06-25",
+        "value": 3.86
+      },
+      {
+        "date": "2025-06-26",
+        "value": 3.87
+      },
+      {
+        "date": "2025-06-27",
+        "value": 3.87
+      },
+      {
+        "date": "2025-06-28",
+        "value": 3.88
+      },
+      {
+        "date": "2025-06-29",
+        "value": 3.9
+      },
+      {
+        "date": "2025-06-30",
+        "value": 3.89
+      },
+      {
+        "date": "2025-07-01",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-02",
+        "value": 3.87
+      },
+      {
+        "date": "2025-07-03",
+        "value": 3.87
+      },
+      {
+        "date": "2025-07-04",
+        "value": 3.86
+      },
+      {
+        "date": "2025-07-05",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-06",
+        "value": 3.89
+      },
+      {
+        "date": "2025-07-07",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-08",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-09",
+        "value": 3.9
+      },
+      {
+        "date": "2025-07-10",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-11",
+        "value": 3.87
+      },
+      {
+        "date": "2025-07-12",
+        "value": 3.86
+      },
+      {
+        "date": "2025-07-13",
+        "value": 3.87
+      },
+      {
+        "date": "2025-07-14",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-15",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-16",
+        "value": 3.88
+      },
+      {
+        "date": "2025-07-17",
+        "value": 3.9
+      }
+    ]
+  }
+};
+
+        // 뉴스 표시 영역 DOM 요소 가져오기
+        const newsDisplayArea = document.getElementById('news-display-area');
+
+        // 특정 기업의 뉴스를 표시하는 함수 (기존과 동일)
+        function displayCompanyNews(ticker) {
+            newsDisplayArea.innerHTML = ''; // 이전 뉴스 내용 삭제
+            newsDisplayArea.style.display = 'block'; // 뉴스 영역 보이게 설정
+
+            const companyData = allCompanyNewsData[ticker];
+
+            if (!companyData || !companyData.selected_news || companyData.selected_news.length === 0) {
+                newsDisplayArea.innerHTML = `<h3>🚨 ${companyData ? companyData.company_name : ticker} 관련 핵심 뉴스가 없습니다.</h3>`;
+                return;
+            }
+
+            let newsHtml = `<h3>${companyData.company_name} 관련 핵심 뉴스 (Gemini AI 선별)</h3>`;
+            
+            companyData.selected_news.forEach(selectedItem => {
+                const newsIndex = selectedItem.index;
+                const relatedTickers = selectedItem.related_tickers;
+                
+                // full_news_list에서 실제 뉴스 내용을 가져옵니다.
+                const fullNews = companyData.full_news_list[newsIndex];
+
+                if (fullNews) {
+                    newsHtml += `
+                        <div class="news-item">
+                            <h4>${fullNews.title}</h4>
+                            <p>${fullNews.summary}</p>
+                            <div class="tickers">관련 티커: ${relatedTickers.join(', ') || '없음'}</div>
+                        </div>
+                    `;
+                }
+            });
+            newsDisplayArea.innerHTML = newsHtml;
+        }
+
+        // 모든 종목명 링크에 클릭 이벤트 리스너 추가 (기존과 동일)
+        document.addEventListener('DOMContentLoaded', () => {
+            const stockNameLinks = document.querySelectorAll('.stock-name-link');
+            stockNameLinks.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault(); // 링크의 기본 동작(페이지 이동) 방지
+                    const ticker = event.target.dataset.ticker; // data-ticker 속성 값 가져오기
+                    displayCompanyNews(ticker);
+                });
+            });
+
+            // --- 차트 렌더링 시작 ---
+            const ctx = document.getElementById('portfolioPerformanceChart').getContext('2d');
+            const datasets = [];
+            const labels = []; // 모든 데이터셋의 날짜 레이블을 저장할 배열
+
+            // 미리 정의된 색상 팔레트
+            const chartColors = [
+                'var(--chart-line-color-1)', /* 오렌지 */
+                'var(--chart-line-color-2)', /* 남색 */
+                'var(--chart-line-color-3)', /* 녹색 */
+                'var(--chart-line-color-4)', /* 보라색 */
+                'var(--chart-line-color-5)'  /* 노란색 */
+            ];
+
+            let colorIndex = 0;
+
+            // allCompanyNewsData에서 그래프 데이터 추출 및 Chart.js 데이터셋 생성
+            for (const ticker in allCompanyNewsData) {
+                const companyData = allCompanyNewsData[ticker];
+                if (companyData.historical_performance && companyData.historical_performance.length > 0) {
+                    // 첫 번째 데이터셋에서 날짜 레이블을 가져옵니다 (모든 데이터셋의 날짜가 동일하다고 가정)
+                    if (labels.length === 0) {
+                        companyData.historical_performance.forEach(item => {
+                            labels.push(item.date);
+                        });
+                    }
+
+                    const performanceValues = companyData.historical_performance.map(item => item.value);
+                    
+                    datasets.push({
+                        label: companyData.company_name + ' 수익률 (%)',
+                        data: performanceValues,
+                        borderColor: chartColors[colorIndex % chartColors.length], // 색상 순환 사용
+                        backgroundColor: 'rgba(0,0,0,0)', // 채우지 않음
+                        tension: 0.3, // 선을 부드럽게
+                        pointRadius: 0, // 포인트 숨김
+                        borderWidth: 2
+                    });
+                    colorIndex++;
+                }
+            }
+
+            if (datasets.length > 0) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false, // 컨테이너 크기에 맞춰 조절
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        family: 'Noto Sans KR',
+                                        size: 14
+                                    },
+                                    color: 'var(--mirae-text-dark)'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += context.parsed.y.toFixed(2) + '%';
+                                        }
+                                        return label;
+                                    }
+                                },
+                                titleFont: { family: 'Noto Sans KR' },
+                                bodyFont: { family: 'Noto Sans KR' }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '날짜',
+                                    color: 'var(--mirae-text-dark)',
+                                    font: { family: 'Noto Sans KR', size: 14 }
+                                },
+                                ticks: {
+                                    color: 'var(--mirae-text-light)',
+                                    font: { family: 'Noto Sans KR' },
+                                    autoSkip: true,
+                                    maxTicksLimit: 10 // 너무 많은 레이블 방지
+                                },
+                                grid: {
+                                    color: 'var(--mirae-border-light)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '수익률 (%)',
+                                    color: 'var(--mirae-text-dark)',
+                                    font: { family: 'Noto Sans KR', size: 14 }
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    },
+                                    color: 'var(--mirae-text-light)',
+                                    font: { family: 'Noto Sans KR' }
+                                },
+                                grid: {
+                                    color: 'var(--mirae-border-light)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            // --- 차트 렌더링 끝 ---
+        });
+    </script>
+</body>
+</html>
