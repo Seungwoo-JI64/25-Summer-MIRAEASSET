@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9' # 또는 '3.10', '3.11' 등 원하는 Python 버전 지정
+          python-version: '3.12' # 또는 '3.10', '3.11' 등 원하는 Python 버전 지정
 
       - name: Install dependencies
         run: |
@@ -29,4 +29,4 @@ jobs:
       - name: Run correlation script
         env:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python run_correlations.py
+        run: python 상관관계자동화코드.py
