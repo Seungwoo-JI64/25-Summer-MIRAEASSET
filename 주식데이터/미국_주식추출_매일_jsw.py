@@ -6,6 +6,8 @@ import pytz
 import os
 
 #supabase 연결 정보
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # 미국 주식 목록
