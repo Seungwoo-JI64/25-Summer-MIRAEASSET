@@ -732,3 +732,39 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
         print(f"  - 뉴스 선별: \"{news_item['title']}\" (연관 Ticker: {related_tickers})")
 
     return {"selected_news": final_news_list}
+
+# =================================================================
+#               이 아래는 단위 테스트를 위한 코드입니다.
+# 이 파일을 직접 실행할 때만 작동합니다. (예: python -m analysis_model.agents.news_analyst_agent)
+# =================================================================
+if __name__ == '__main__':
+    from pprint import pprint
+    import traceback
+
+    print("🚀 뉴스 분석 에이전트 단위 테스트를 시작합니다...")
+
+    test_state: AnalysisState = {
+        "company_name": "NVIDIA",
+        "ticker": "NVDA",
+        "company_description": "엔비디아는 인공지능(AI), 고성능 컴퓨팅(HPC), 게이밍, 자율주행차 등을 위한 그래픽 처리 장치(GPU)와 관련 시스템 온 어 칩(SoC)을 설계 및 제조하는 선도적인 기술 기업입니다.",
+        "financial_health": None,
+        "selected_news": None,
+        "market_analysis_result": None,
+        "final_report": None,
+    }
+
+    try:
+        analysis_result = run_news_analyst(test_state)
+
+        print("\n\n✅ --- 최종 분석 결과 --- ✅")
+        if analysis_result and analysis_result.get("selected_news"):
+            print(f"성공적으로 {len(analysis_result['selected_news'])}개의 뉴스를 선별했습니다.")
+            pprint(analysis_result['selected_news'])
+        else:
+            print("⚠️ 분석된 뉴스가 없습니다.")
+
+    except Exception as e:
+        print(f"\n\n❌ 테스트 실행 중 심각한 오류가 발생했습니다: {e}")
+        traceback.print_exc()
+
+    print("\n🚀 뉴스 분석 에이전트 단위 테스트를 종료합니다.")
