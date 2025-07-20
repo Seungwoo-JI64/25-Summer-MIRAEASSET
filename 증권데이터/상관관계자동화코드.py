@@ -25,11 +25,6 @@ def fetch_all_data(table_name, step=1000):
         start += step
     return all_data
 
-# 사용 예시
-korean_stocks_data = fetch_all_data("korean_stocks")
-financial_indices_data = fetch_all_data("financial_indices")
-us_stocks_data = fetch_all_data("us_stocks")
-
 korean_stocks = pd.DataFrame(korean_stocks_data)
 financial_indices = pd.DataFrame(financial_indices_data)
 us_stocks = pd.DataFrame(us_stocks_data)
@@ -37,10 +32,12 @@ us_stocks = pd.DataFrame(us_stocks_data)
 # 1. datetime 변환
 korean_stocks['time'] = pd.to_datetime(korean_stocks['time'])
 financial_indices['date'] = pd.to_datetime(financial_indices['date'])
+us_stocks['time'] = pd.to_datetime(us_stocks['time']) # <--- 이 줄 추가!
 
 # 2. 날짜만 추출
 korean_stocks['date_only'] = korean_stocks['time'].dt.date
 financial_indices['date_only'] = financial_indices['date'].dt.date
+us_stocks['date_only'] = us_stocks['time'].dt.date # <--- 이 줄 추가!
 
 # 3. 결과 저장용 리스트
 results = []
