@@ -1,16 +1,9 @@
 from supabase import create_client, Client
 import pandas as pd
-
-url = "https://hcmniqyaqybzhmzmaumh.supabase.co"
-# key는 GitHub Secrets로 관리하는 것이 보안상 안전합니다.
-# 실제 코드에서는 os.environ.get()을 사용하여 환경 변수에서 가져올 것입니다.
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjbW5pcXlhcXliemhtem1hdW1oIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTQzOTk0OCwiZXhwIjoyMDY3MDE1OTQ4fQ.1K2yL8sWZ0-NwfBNKamhZO23HdD16PCXH_k4LZx-bss"  # service key여야 insert 가능
-
-# 보안을 위해 key를 환경 변수에서 가져오도록 수정합니다.
 import os
-key = os.environ.get("SUPABASE_SERVICE_KEY") # GitHub Secrets에서 설정할 변수 이름
-
-supabase: Client = create_client(url, key)
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(supabase_url, supabase_key)
 
 def fetch_all_data(table_name, step=1000):
     all_data = []
