@@ -168,7 +168,7 @@ def run_market_correlation(state: AnalysisState) -> Dict[str, Any]:
 
     # 5. 분석 결과 캡션 생성
     caption = (
-        f"3년간의 데이터를 기반으로 사전 계산된 '{target_name}'과 '{related_name}'의 상관계수는 {correlation_coefficient:.2f}입니다. "
+        f"2년간의 데이터를 기반으로 사전 계산된 '{target_name}'과 '{related_name}'의 상관계수는 {correlation_coefficient:.2f}입니다. "
         f"이는 두 자산이 {'강한 양의 관계' if correlation_coefficient > 0.7 else '어느 정도의 양의 관계' if correlation_coefficient > 0.3 else '거의 무관한 관계' if correlation_coefficient > -0.3 else '어느 정도의 음의 관계' if correlation_coefficient > -0.7 else '강한 음의 관계'}에 있음을 의미합니다. "
         f"'{first_news['title']}' 뉴스({news_date_str}) 발생 이전 1년간의 주가 추이에서도 이러한 연관성을 확인할 수 있습니다."
     )
