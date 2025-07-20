@@ -36,12 +36,10 @@ us_stocks = pd.DataFrame(us_stocks_data)
 # 1. datetime 변환
 korean_stocks['time'] = pd.to_datetime(korean_stocks['time'])
 financial_indices['date'] = pd.to_datetime(financial_indices['date'])
-us_stocks['time'] = pd.to_datetime(us_stocks['time']) # <--- 이 줄 추가!
 
 # 2. 날짜만 추출
 korean_stocks['date_only'] = korean_stocks['time'].dt.date
 financial_indices['date_only'] = financial_indices['date'].dt.date
-us_stocks['date_only'] = us_stocks['time'].dt.date # <--- 이 줄 추가!
 
 # 3. 결과 저장용 리스트
 results = []
