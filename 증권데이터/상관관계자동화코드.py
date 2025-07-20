@@ -25,6 +25,10 @@ def fetch_all_data(table_name, step=1000):
         start += step
     return all_data
 
+korean_stocks_data = fetch_all_data("korean_stocks")
+financial_indices_data = fetch_all_data("financial_indices")
+us_stocks_data = fetch_all_data("us_stocks")
+
 korean_stocks = pd.DataFrame(korean_stocks_data)
 financial_indices = pd.DataFrame(financial_indices_data)
 us_stocks = pd.DataFrame(us_stocks_data)
