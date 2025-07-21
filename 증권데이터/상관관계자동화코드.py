@@ -1,14 +1,14 @@
 from supabase import create_client, Client
 import pandas as pd
 import os
+
 import time
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 import httpx # httpx.RemoteProtocolError를 임포트
 
-url = "https://hcmniqyaqybzhmzmaumh.supabase.co"
-key = os.environ.get("SUPABASE_SERVICE_KEY")
-
-supabase: Client = create_client(url, key)
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(supabase_url, supabase_key)
 
 def fetch_all_data(table_name, step=1000):
     all_data = []
