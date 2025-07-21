@@ -18,13 +18,15 @@ def fetch_all_data(table_name, step=1000):
         start += step
     return all_data
 
+# 사용 예시
 korean_stocks_data = fetch_all_data("korean_stocks")
 financial_indices_data = fetch_all_data("financial_indices")
 us_stocks_data = fetch_all_data("us_stocks")
-
+import pandas as pd
 korean_stocks = pd.DataFrame(korean_stocks_data)
 financial_indices = pd.DataFrame(financial_indices_data)
 us_stocks = pd.DataFrame(us_stocks_data)
+
 
 # 1. datetime 변환
 korean_stocks['time'] = pd.to_datetime(korean_stocks['time'])
@@ -110,35 +112,25 @@ for kor_company in korean_stocks['company_name'].unique():
 # 결과 저장
 corr_kor_us = pd.DataFrame(results)
 
-# 1. 첫 번째 데이터프레임: corr_kor_index (ticker 포함)
-# 데이터프레임이 비어있지 않은 경우에만 삽입 시도
-if not corr_kor_index.empty:
-    for _, row in corr_kor_index.iterrows():
-        data = {
-            "company_name": row["company_name"],
-            "ticker": row["ticker"],                 # ticker 컬럼 추가
-            "index_ko": row["index_ko"],
-            "correlation": None if pd.isna(row["correlation"]) else float(row["correlation"])
-        }
-        try:
-            supabase.table("correlation_kor_index").insert(data).execute()
-        except Exception as e:
-            print(f"Error inserting into correlation_kor_index: {e}")
+# 1. 한국 기업 - 지수 상관관계 저장
+for _, row in corr_kor_index.iterrows():
+    data = {
+        "company_name": row["company_name"],
+        "ticker": row["ticker"],
+        "index_ko": row["index_ko"],
+        "correlation": None if pd.isna(row["correlation"]) else float(row["correlation"])
+    }
+    supabase.table("correlation_kor_index").insert(data).execute()
 
-# 2. 두 번째 데이터프레임: corr_kor_us (korean_ticker, us_ticker 추가)
-# 데이터프레임이 비어있지 않은 경우에만 삽입 시도
-if not corr_kor_us.empty:
-    for _, row in corr_kor_us.iterrows():
-        data = {
-            "korean_company": row["korean_company"],
-            "korean_ticker": row["korean_ticker"],  # korean_ticker 추가
-            "us_company": row["us_company"],
-            "us_ticker": row["us_ticker"],          # us_ticker 추가
-            "correlation": None if pd.isna(row["correlation"]) else float(row["correlation"])
-        }
-        try:
-            supabase.table("correlation_kor_us").insert(data).execute()
-        except Exception as e:
-            print(f"Error inserting into correlation_kor_us: {e}")
+# 2. 한국 - 미국 기업 상관관계 저장
+for _, row in corr_kor_us.iterrows():
+    data = {
+        "korean_company": row["korean_company"],
+        "korean_ticker": row["korean_ticker"],
+        "us_company": row["us_company"],
+        "us_ticker": row["us_ticker"],
+        "correlation": None if pd.isna(row["correlation"]) else float(row["correlation"])
+    }
+    supabase.table("correlation_kor_us").insert(data).execute()
 
 print("Correlation calculation and insertion completed.")
