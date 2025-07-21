@@ -3,7 +3,7 @@
 
 # RAG를 통해 기업 설명과 관련된 뉴스 15개를 1차 추출
 # 이후 Gemini AI를 사용하여 가장 영향력 있는 뉴스 3개를 선택한다
-# 이 결과는 state의 SelectedNews 클래스에 저장된다.
+# 이 결과는 state의 DomesticNews 클래스에 저장된다.
 
 import os
 import json
@@ -23,7 +23,7 @@ from google import genai
 from google.genai import types
 
 # 상위 폴더에 있는 state.py 모듈에서 AnalysisState 클래스를 가져옵니다.
-from ..state import AnalysisState, SelectedNews
+from ..state import AnalysisState, DomesticNews
 
 # .env 파일에서 환경 변수를 로드합니다.
 load_dotenv()
@@ -52,7 +52,7 @@ supabase: Client = create_client(url, key)
 # 프로그램 시작 시 한 번만 데이터를 로드하고 전처리하여 효율성을 높입니다.
 print("Supabase에서 기업 및 뉴스 데이터 로딩 및 전처리를 시작합니다...")
 df_company = pd.DataFrame(supabase.table("company_summary").select("company_name,ticker, summary, summary_embedding").execute().data)
-df_news = pd.DataFrame(supabase.table("financial_news_summary").select("title, url, summary, embedding, publish_date").execute().data)
+df_news = pd.DataFrame(supabase.table("ko_financial_news_summary").select("title, url, summary, embedding, publish_date").execute().data)
 df_news['publish_date'] = pd.to_datetime(df_news['publish_date']).dt.strftime('%Y-%m-%d')
 
 # 임베딩 컬럼(문자열)을 실제 벡터(Numpy 배열)로 변환합니다.
@@ -69,16 +69,8 @@ print("데이터 로딩 및 전처리 완료.")
 METRICS_MAP = {
     # === 지수 ===
     '^GSPC': {'name': 'S&P 500 지수', "type": "index"},
-    '^NDX': {'name': '나스닥 100 지수', "type": "index"},
-    '^DJI': {'name': '다우존스 산업평균지수', "type": "index"},
     '^KS11': {'name': '코스피 지수', "type": "index"},
-    '^KQ11': {'name': '코스닥 지수', "type": "index"},
-    'LIT': {'name': '리튬 ETF', "type": "index"},
-    '^TNX': {'name': '미국 10년물 국채 수익률', "type": "index"},
-    'NBI': {'name': '나스닥 바이오테크놀로지 지수', "type": "index"},
-    '^VIX': {'name': 'CBOE 변동성 지수', "type": "index"},
     'CL=F': {'name': 'WTI 원유 선물', "type": "index"},
-    'FDN': {'name': '다우존스 인터넷 지수', "type": "index"},
     'USDKRW=X': {'name': '달러/원 환율', "type": "index"},
     # === 미국 기업 ===
     "NVDA": {
@@ -563,12 +555,13 @@ def select_top_news_with_gemini(
         "2. For EACH of the 3 selected news, identify 1-2 MOST relevant tickers from the 'US ENTITY LIST'. The ticker is inside the parentheses `()`. ",
         "3. **You MUST return your answer ONLY as a single, valid JSON object.**",
         "4. **DO NOT include any other text, explanation, or markdown like ```json. Your entire response must be ONLY the JSON object itself, starting with `{` and ending with `}`.**",
+        "5. Can you extract as many Korea-related tickers as possible, like the USD/KRW exchange rate ('USDKRW=X') or the KOSPI index ('^KS11')?"
         "\n### US ENTITY LIST (Name (Ticker)) ###",
         # 이제 "NVIDIA (NVDA)" 와 같은 명확한 정보가 AI에게 제공됩니다.
         f"[{entities_prompt_list}]",
         "\n### OUTPUT FORMAT EXAMPLE ###",
         # 예시를 통해 AI가 반환해야 할 형식을 다시 한번 명확히 보여줍니다.
-        "{\"selected_news\": [{\"index\": 1, \"related_tickers\": [\"NVDA\"]}, {\"index\": 2, \"related_tickers\": [\"^NDX\", \"USDKRW=X\"]}, {\"index\": 8, \"related_tickers\": [\"MSFT\"]}]}",
+        "{\"selected_domestic_news\": [{\"index\": 1, \"related_tickers\": [\"NVDA\"]}, {\"index\": 2, \"related_tickers\": [\"^NDX\", \"USDKRW=X\"]}, {\"index\": 8, \"related_tickers\": [\"MSFT\"]}]}",
         "\n--- TARGET COMPANY NEWS LIST ---\n"
     ]
     # --- [프롬프트 수정 끝] ---
@@ -650,12 +643,12 @@ def select_top_news_with_gemini(
             result = json.loads(json_string)
             
             # 응답 구조가 예상과 맞는지 한 번 더 확인합니다.
-            if 'selected_news' not in result or not isinstance(result['selected_news'], list):
-                 raise ValueError("JSON is valid, but the 'selected_news' key is missing or not a list.")
+            if 'selected_domestic_news' not in result or not isinstance(result['selected_domestic_news'], list):
+                 raise ValueError("JSON is valid, but the 'selected_domestic_news' key is missing or not a list.")
 
-            print(f"Gemini가 성공적으로 파싱한 뉴스 정보: {result['selected_news']}")
-            return result['selected_news']
-            
+            print(f"Gemini가 성공적으로 파싱한 뉴스 정보: {result['selected_domestic_news']}")
+            return result['selected_domestic_news']
+
         except (json.JSONDecodeError, IndexError, ValueError) as e:
             # JSON 파싱 과정에서 어떤 종류의 에러가 발생했는지 명확히 출력합니다.
             print(f"!!! [ERROR] Failed to parse JSON from Gemini's response. Reason: {e}")
@@ -670,7 +663,7 @@ def select_top_news_with_gemini(
         return fallback_result
 
 
-def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
+def run_domestic_news_analyst(state: AnalysisState) -> Dict[str, Any]:
     """
     뉴스 분석 에이전트의 실행 함수.
     RAG로 뉴스를 검색하고 Gemini로 핵심 뉴스를 선별하여 상태를 업데이트합니다.
@@ -682,8 +675,8 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
     # 1. RAG를 통해 관련 뉴스 15개 검색
     candidate_news = search_relevant_news_rag(company_name)
     if not candidate_news:
-        return {"selected_news": []} # 검색된 뉴스 없으면 빈 리스트 반환
-    
+        return {"selected_domestic_news": []} # 검색된 뉴스 없으면 빈 리스트 반환
+
     # 2. Gemini 프롬프트에 사용할 미국 기업/지표 목록을 "이름 (티커)" 형식으로 생성합니다.
     #    AI가 이름과 티커를 명확하게 매칭할 수 있도록 정보를 함께 제공합니다.
     #    예: ["NVIDIA (NVDA)", "S&P 500 지수 (^GSPC)", ...]
@@ -691,16 +684,16 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
     # reverse_metrics_map은 더 이상 필요하지 않으므로 삭제하거나 주석 처리할 수 있습니다.
     
      # 3. Gemini를 통해 뉴스 3개 선별 및 관련 미국 기업/지표 Ticker 추출
-    selected_news_data = select_top_news_with_gemini(
+    selected_domestic_news_data = select_top_news_with_gemini(
         company_name, company_description, candidate_news, us_entities_for_prompt
     )
-    if not selected_news_data:
+    if not selected_domestic_news_data:
         print("[News Analyst] Gemini로부터 유효한 뉴스 선택 결과를 받지 못했습니다.")
-        return {"selected_news": []}
+        return {"selected_domestic_news": []}
     
     # 4. Gemini 결과를 기반으로 최종 뉴스 목록 구성
-    final_news_list: List[SelectedNews] = []
-    for news_info in selected_news_data:
+    final_news_list: List[DomesticNews] = []
+    for news_info in selected_domestic_news_data:
         # Gemini가 알려준 인덱스와 Ticker 목록을 가져옵니다.
         index = news_info.get("index")
         related_tickers = news_info.get("related_tickers", [])
@@ -713,11 +706,11 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
         news_item = candidate_news[index]
         
         # Ticker 목록에 해당하는 '이름' 목록을 찾습니다.
-        # state.py의 SelectedNews 클래스는 'entities' 필드에 이름 목록을 요구합니다.
+        # state.py의 DomesticNews 클래스는 'entities' 필드에 이름 목록을 요구합니다.
         entity_names = [v['name'] for k, v in METRICS_MAP.items() if k in related_tickers]
 
-        # 최종 형식인 SelectedNews 객체를 생성합니다.
-        selected_news_item: SelectedNews = {
+        # 최종 형식인 DomesticNews 객체를 생성합니다.
+        selected_domestic_news_item: DomesticNews = {
             "title": news_item["title"],
             "url": news_item["url"],
             "summary": news_item["summary"],
@@ -725,7 +718,7 @@ def run_news_analyst(state: AnalysisState) -> Dict[str, Any]:
             "entities": entity_names,
             "related_metrics": related_tickers,
         }
-        final_news_list.append(selected_news_item)
+        final_news_list.append(selected_domestic_news_item)
         print(f"  - 뉴스 선별: \"{news_item['title']}\" (연관 Ticker: {related_tickers})")
 
-    return {"selected_news": final_news_list}
+    return {"selected_domestic_news": final_news_list}
