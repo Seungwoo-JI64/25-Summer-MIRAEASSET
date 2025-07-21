@@ -29,10 +29,12 @@ us_stocks = pd.DataFrame(us_stocks_data)
 # 1. datetime 변환
 korean_stocks['time'] = pd.to_datetime(korean_stocks['time'])
 financial_indices['date'] = pd.to_datetime(financial_indices['date'])
+us_stocks['time'] = pd.to_datetime(us_stocks['time'])
 
 # 2. 날짜만 추출
 korean_stocks['date_only'] = korean_stocks['time'].dt.date
 financial_indices['date_only'] = financial_indices['date'].dt.date
+us_stocks['date_only'] = us_stocks['time'].dt.date
 
 # 3. 결과 저장용 리스트
 results = []
@@ -72,37 +74,29 @@ for company in companies:
 # 6. 결과 데이터프레임 생성
 corr_kor_index = pd.DataFrame(results)
 
-# 결과를 다시 초기화하여 두 번째 상관관계 계산에 사용
+korean_companies = korean_stocks['company_name']
+us_companies = us_stocks['company_name']
+
+us_grouped = us_stocks.groupby('company_name')
+
 results = []
 
-# unique() 호출 전에 데이터프레임이 비어있을 경우를 대비하여 조건 추가
-korean_companies = korean_stocks['company_name'].unique() if not korean_stocks.empty else []
-us_companies = us_stocks['company_name'].unique() if not us_stocks.empty else []
-
-for kor_company in korean_companies:
+for kor_company in korean_stocks['company_name'].unique():
     df_kor_all = korean_stocks[korean_stocks['company_name'] == kor_company]
-
-    # 한국 기업의 ticker 추출
-    kor_ticker = df_kor_all['ticker'].iloc[0] if not df_kor_all.empty else None
-
+    if df_kor_all.empty:
+        continue
+    kor_ticker = df_kor_all['ticker'].iloc[0]
     df_kor = df_kor_all[['date_only', 'close_price']]
 
-    for us_company in us_companies:
-        df_us_all = us_stocks[us_stocks['company_name'] == us_company]
-
-        # 미국 기업의 ticker 추출
-        us_ticker = df_us_all['ticker'].iloc[0] if not df_us_all.empty else None
-
+    for us_company, df_us_all in us_grouped:
+        if df_us_all.empty:
+            continue
+        us_ticker = df_us_all['ticker'].iloc[0]
         df_us = df_us_all[['date_only', 'close_price']]
-
-        # 날짜 기준 병합
         merged = pd.merge(df_kor, df_us, on='date_only', how='inner', suffixes=('_kor', '_us'))
-
         if len(merged) < 5:
             continue
-
         corr = merged['close_price_kor'].corr(merged['close_price_us'])
-
         if pd.notna(corr):
             results.append({
                 'korean_company': kor_company,
@@ -111,6 +105,7 @@ for kor_company in korean_companies:
                 'us_ticker': us_ticker,
                 'correlation': corr
             })
+
 
 # 결과 저장
 corr_kor_us = pd.DataFrame(results)
