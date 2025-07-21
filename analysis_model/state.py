@@ -21,32 +21,66 @@ class SelectedNews(TypedDict):
     title: str  # 뉴스 제목
     url: str    # 뉴스 원문 URL
     summary: str # 뉴스 요약
+    published_date: str
     entities: List[str] # 뉴스에서 추출된 핵심 엔티티 (예: 'SK하이닉스', 'SOX 지수')
     related_metrics: List[str] # 엔티티의 Ticker
 
+class DomesticNews(TypedDict):
+    """국내 뉴스 분석 에이전트가 선별한 개별 뉴스 정보"""
+    title: str
+    url: str
+    summary: str
+    publish_date: str
+    entities: List[str]         # <<< 추가: 뉴스에서 추출된 핵심 엔티티
+    related_metrics: List[str]  # <<< 추가: 엔티티의 Ticker
+
+class TickerPriceData(TypedDict):
+    """개별 티커의 시계열 데이터와 요약 정보"""
+    ticker: str
+    # [[타임스탬프, 가격], [타임스탬프, 가격], ...] 형태
+    prices: List[List[Any]]
+    change_summary: str # 예: '15일간 약 3.5% 상승했습니다.'
+
+class NewsImpactData(TypedDict):
+    """뉴스 이벤트 '블록'과 관련된 주체들의 주가 변동 데이터를 담는 구조"""
+    news_titles: List[str]
+    start_date: str
+    end_date: str
+    # {'Apple': TickerPriceData, 'Samsung': TickerPriceData, ...} 형태
+    price_data_by_name: Dict[str, TickerPriceData]
+
 class MarketAnalysisResult(TypedDict):
-    """시장 상관관계 분석 결과를 담는 구조"""
-    correlation_coefficient: float # 상관계수
-    analysis_caption: str      # 분석 결과에 대한 캡션
-    chart_image_path: str      # 생성된 차트 이미지 파일의 경로
+    """시장 상관관계 및 뉴스 영향 분석 결과를 담는 구조"""
+    correlation_summary: List[str]
+    news_impact_data: List[NewsImpactData]
+
+class PerEntityAnalysis(TypedDict):
+    """개별 주체(기업/지수)에 대한 분석 내용"""
+    내용: str
+    주가_반응: str
+
+class NewsAnalysis(TypedDict):
+    """뉴스 분석 결과 (개별 주체 분석 포함)"""
+    # {'Apple(AAPL)': PerEntityAnalysis, ...} 형태
+    entity_analysis: Dict[str, PerEntityAnalysis]
 
 class FinalReport(TypedDict):
-    """최종 보고서의 구조"""
-    title: str                  # 리포트 제목
-    executive_summary: str      # 핵심 요약
-    key_findings: List[Dict[str, Any]] # 분석 근거 (뉴스, 차트 등)
-    outlook: str                # 종합 전망
-
+    """최종 생성된 '개장 전 투자 브리핑'의 구조"""
+    report_title: str
+    briefing_summary: str
+    news_analysis: NewsAnalysis
+    strategy_suggestion: str
 
 # 모든 데이터는 AnalysisState라는 하나의 상태 객체에 담겨
 # LangGraph의 파이프라인을 통해 전달됩니다.
 class AnalysisState(TypedDict):
     """전체 분석 파이프라인의 상태를 관리하는 중앙 데이터 객체"""
-    company_name: str | None # 기업 이름
-    ticker: str | None       # 주식 티커 (예: 000660.KS)
-    company_description: str | None   # 기업 개요 (예: 메모리 반도체 전문 기업...)
-    financial_health: str | None # 재무 건전성 분석 결과
+    ticker: str | None
+    company_name: str | None
+    company_description: str | None
+    financial_health: str | None
+    selected_news: List[SelectedNews] | None           # 해외 뉴스
+    selected_domestic_news: List[DomesticNews] | None  # 국내 뉴스
+    market_analysis_result: MarketAnalysisResult | None
+    final_report: FinalReport | None
 
-    selected_news: List[SelectedNews] | None # 뉴스 분석 에이전트가 채우는 필드
-    market_analysis_result: MarketAnalysisResult | None # 시장 상관관계 분석 에이전트가 채우는 필드
-    final_report: FinalReport | None # 최종 보고서 생성 에이전트가 채우는 필드

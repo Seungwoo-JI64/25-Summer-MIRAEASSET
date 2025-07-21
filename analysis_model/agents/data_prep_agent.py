@@ -61,18 +61,28 @@ def load_financial_statements_from_supabase(ticker: str) -> str:
     try:
         query_result = supabase_client \
             .table("financial_statements") \
-            .select("financial_statements") \
+            .select("ticker, summary") \
             .eq("ticker", ticker) \
+            .single() \
             .execute()
 
         if query_result.data:
-            return query_result.data[0]['financial_statements']
+            return {
+                "ticker": query_result.data.get('ticker'),
+                "financial_statements": query_result.data.get('summary')
+            }
         else:
-            return "해당 티커의 재무 분석 데이터가 DB에 존재하지 않습니다."
-
+            return {
+                "ticker": None,
+                "financial_statements": "해당 기업의 재무제표 정보가 DB에 존재하지 않습니다."
+            }
     except Exception as e:
-        print(f"Supabase 조회 중 에러 발생: {e}")
-        return "데이터베이스 조회 중 오류가 발생했습니다."
+        print(f"Supabase 'financial_statements' 조회 중 에러 발생: {e}")
+        return {
+            "ticker": None,
+            "financial_statements": "데이터베이스 조회 중 오류가 발생했습니다."
+        }
+
 
 
 # --- 데이터 준비 실행 함수 ---
@@ -102,9 +112,9 @@ def run_data_prep(state: AnalysisState) -> Dict[str, Any]:
         company_description = None
 
     try:
-        financial_res = supabase_client.table("financial_statements").select("financial_statements").eq("ticker", ticker).single().execute()
+        financial_res = supabase_client.table("financial_statements").select("summary").eq("ticker", ticker).single().execute()
         if financial_res.data:
-            financial_statements = financial_res.data.get("financial_statements")
+            financial_statements = financial_res.data.get("summary")
         else:
             financial_statements = "DB에 재무제표 데이터가 없습니다."
     except Exception as e:
