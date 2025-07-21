@@ -29,4 +29,4 @@ jobs:
       - name: Run correlation script
         env:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python 상관관계자동화코드.py
+        run: python 증권데이터/상관관계자동화코드.py
