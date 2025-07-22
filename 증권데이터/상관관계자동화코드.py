@@ -58,7 +58,7 @@ for company in companies:
     if df_company_all.empty:
         continue
 
-    ticker = df_company_all['ticker'].iloc if 'ticker' in df_company_all.columns and not df_company_all.empty else None
+    ticker = df_company_all['ticker'].iloc[0] if 'ticker' in df_company_all.columns and not df_company_all.empty else None
 
     df_company = df_company_all[['date_only', 'close_price']]
 
@@ -103,7 +103,7 @@ for kor_company in korean_unique_companies:
     df_kor_all = korean_stocks[korean_stocks['company_name'] == kor_company]
     if df_kor_all.empty:
         continue
-    kor_ticker = df_kor_all['ticker'].iloc if 'ticker' in df_kor_all.columns and not df_kor_all.empty else None
+    kor_ticker = df_kor_all['ticker'].iloc[0] if 'ticker' in df_kor_all.columns and not df_kor_all.empty else None
     df_kor = df_kor_all[['date_only', 'close_price']]
 
     if not us_grouped:
@@ -112,7 +112,7 @@ for kor_company in korean_unique_companies:
     for us_company, df_us_all in us_grouped:
         if df_us_all.empty:
             continue
-        us_ticker = df_us_all['ticker'].iloc if 'ticker' in df_us_all.columns and not df_us_all.empty else None
+        us_ticker = df_us_all['ticker'].iloc[0] if 'ticker' in df_us_all.columns and not df_us_all.empty else None
         df_us = df_us_all[['date_only', 'close_price']]
         merged = pd.merge(df_kor, df_us, on='date_only', how='inner', suffixes=('_kor', '_us'))
         if len(merged) < 5:
