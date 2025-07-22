@@ -46,10 +46,9 @@ us_stocks['date_only'] = us_stocks['time'].dt.date if 'time' in us_stocks.column
 results = []
 
 companies = korean_stocks['company_name'].unique() if not korean_stocks.empty else []
-# financial_indices에서 'index_ko', 'index_ticker', 'index_en' 컬럼을 함께 가져오기 위해
-# DataFrame으로 변환 후 unique 대신 필요한 컬럼만 추출
-indices_info = financial_indices[['index_ko', 'index_ticker', 'index_en']].drop_duplicates().to_dict('records') \
-                if not financial_indices.empty and 'index_ko' in financial_indices.columns and 'index_ticker' in financial_indices.columns and 'index_en' in financial_indices.columns \
+# financial_indices에서 'index_ticker' 대신 'index_en'을 티커로 사용하므로, 필요한 컬럼만 가져옴
+indices_info = financial_indices[['index_ko', 'index_en']].drop_duplicates().to_dict('records') \
+                if not financial_indices.empty and 'index_ko' in financial_indices.columns and 'index_en' in financial_indices.columns \
                 else []
 
 
@@ -59,14 +58,14 @@ for company in companies:
     if df_company_all.empty:
         continue
 
-    ticker = df_company_all['ticker'].iloc[0] if 'ticker' in df_company_all.columns and not df_company_all.empty else None
+    ticker = df_company_all['ticker'].iloc if 'ticker' in df_company_all.columns and not df_company_all.empty else None
 
     df_company = df_company_all[['date_only', 'close_price']]
 
-    for index_info in indices_info: # 변경: index_info 딕셔너리로 반복
+    for index_info in indices_info: # index_info 딕셔너리로 반복
         index_ko = index_info['index_ko']
-        index_ticker = index_info['index_ticker'] # 새로 추가
-        index_en = index_info['index_en'] # 새로 추가
+        # index_ticker 컬럼이 없으므로, index_en을 티커 역할로 사용
+        index_en_as_ticker = index_info['index_en'] # index_en이 티커 역할도 함
 
         df_index = financial_indices[financial_indices['index_ko'] == index_ko]
         if df_index.empty:
@@ -85,8 +84,7 @@ for company in companies:
                 'company_name': company,
                 'ticker': ticker,
                 'index_ko': index_ko,
-                'index_ticker': index_ticker, # 새로 추가
-                'index_en': index_en,         # 새로 추가
+                'index_en': index_en_as_ticker, # index_en을 직접 사용
                 'correlation': corr
             })
 
@@ -98,24 +96,23 @@ corr_kor_index = pd.DataFrame(results)
 results = []
 
 korean_unique_companies = korean_stocks['company_name'].unique() if not korean_stocks.empty else []
-us_grouped = us_stocks.groupby('company_name') if not us_stocks.empty else {} # 빈 경우 {}로 처리하여 for-loop 오류 방지
+us_grouped = us_stocks.groupby('company_name') if not us_stocks.empty else {}
 
 
 for kor_company in korean_unique_companies:
     df_kor_all = korean_stocks[korean_stocks['company_name'] == kor_company]
     if df_kor_all.empty:
         continue
-    kor_ticker = df_kor_all['ticker'].iloc[0] if 'ticker' in df_kor_all.columns and not df_kor_all.empty else None
+    kor_ticker = df_kor_all['ticker'].iloc if 'ticker' in df_kor_all.columns and not df_kor_all.empty else None
     df_kor = df_kor_all[['date_only', 'close_price']]
 
-    # us_grouped가 빈 딕셔너리인 경우 다음으로 넘어감
     if not us_grouped:
         continue
 
     for us_company, df_us_all in us_grouped:
         if df_us_all.empty:
             continue
-        us_ticker = df_us_all['ticker'].iloc[0] if 'ticker' in df_us_all.columns and not df_us_all.empty else None
+        us_ticker = df_us_all['ticker'].iloc if 'ticker' in df_us_all.columns and not df_us_all.empty else None
         df_us = df_us_all[['date_only', 'close_price']]
         merged = pd.merge(df_kor, df_us, on='date_only', how='inner', suffixes=('_kor', '_us'))
         if len(merged) < 5:
@@ -130,11 +127,10 @@ for kor_company in korean_unique_companies:
                 'correlation': corr
             })
 
-
 # 결과 저장
 corr_kor_us = pd.DataFrame(results)
 
-# 재시도 데코레이터 정의 (필요하다면 tenacity 라이브러리 설치 필요)
+# 재시도 데코레이터 정의
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(2), retry=retry_if_exception_type(httpx.RemoteProtocolError))
 def upsert_to_supabase(table_name, data, on_conflict_cols):
     print(f"Attempting to upsert {len(data)} rows into {table_name} with conflict on {on_conflict_cols}...")
@@ -142,22 +138,22 @@ def upsert_to_supabase(table_name, data, on_conflict_cols):
     print(f"Successfully upserted data into {table_name}.")
 
 
-# === Upsert 적용 및 index_ticker, index_en 추가 부분 ===
+# === Upsert 적용 부분 ===
 
 # 1. 한국 기업 - 지수 상관관계 저장
 if not corr_kor_index.empty:
     data_to_insert_kor_index = corr_kor_index.where(pd.notna(corr_kor_index), None).to_dict('records')
     try:
-        # on_conflict 파라미터에 'index_ticker' 추가
+        # on_conflict 파라미터에 'index_ticker' 대신 'index_en' 사용
         upsert_to_supabase(
             "correlation_kor_index",
             data_to_insert_kor_index,
-            "company_name,ticker,index_ko,index_ticker" # <-- index_ticker 추가
+            "company_name,ticker,index_ko,index_en" # <-- index_ticker 대신 index_en 사용
         )
     except Exception as e:
         print(f"Failed to upsert into correlation_kor_index after multiple retries: {e}")
 
-# 2. 한국 - 미국 기업 상관관계 저장 (이 부분은 변경 없음)
+# 2. 한국 - 미국 기업 상관관계 저장
 if not corr_kor_us.empty:
     data_to_insert_kor_us = corr_kor_us.where(pd.notna(corr_kor_us), None).to_dict('records')
     try:
