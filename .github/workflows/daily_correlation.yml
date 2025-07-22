@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas supabase tenacity # <-- 이 라인만 남기고
-          # pip install pandas supabase          # <-- 이 라인은 삭제!
+          pip install pandas supabase tenacity 
+
 
       - name: Run correlation script
         env:
