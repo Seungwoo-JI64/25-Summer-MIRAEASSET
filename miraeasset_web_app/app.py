@@ -6,7 +6,7 @@ from flask_socketio import SocketIO, emit
 import sys
 import threading
 import time
-from typing import Optional # Optional import 추가
+from typing import Optional, List, Dict, Any # Optional import 추가
 
 # 프로젝트 루트를 Python Path에 추가하여 analysis_model을 모듈로 임포트할 수 있게 합니다.
 # 이 줄은 app.py가 miraeasset_web_app/analysis_model/analysis_model 경로를 찾도록 돕습니다.
@@ -16,11 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 # analysis_model의 핵심 로직을 임포트합니다.
-# 주의: 이 임포트 경로는 프로젝트 구조에 따라 달라질 수 있습니다.
-# 만약 analysis_model이 miraeasset_web_app/analysis_model 내부에 있다면,
-# from analysis_model.state import AnalysisState 와 같이 상대 경로로 임포트해야 합니다.
-# 현재 sys.path.append('.')를 사용하고 있으므로, analysis_model.state가 작동할 것입니다.
-from analysis_model.state import AnalysisState
+from analysis_model.state import AnalysisState, MarketAnalysisResult # MarketAnalysisResult도 임포트
 from analysis_model.agents.data_prep_agent import run_data_prep
 from analysis_model.agents.news_analyst_agent import run_news_analyst
 from analysis_model.agents.domestic_news_analyst_agent import run_domestic_news_analyst
@@ -76,13 +72,31 @@ def get_stock_price_and_info(ticker: str, purchase_price: Optional[float] = None
         }
         
     try:
+        order_col = "time" # Default for stocks
+        ticker_filter_col = "ticker" # Default for stocks
+
+        # 한국/미국 주식 테이블 선택 로직 개선 (지수/환율은 이 함수에서 직접 조회하지 않음)
         if ticker.endswith('.KS') or ticker.endswith('.KQ'):
             table_name = "korean_stocks"
-        else:
-            table_name = "us_stocks"
+        elif not (ticker.startswith('^') or ticker.endswith('=X')): # 지수/환율 제외한 나머지 (미국 주식으로 가정)
+             table_name = "us_stocks"
+        else: # 이 함수는 주식 티커에만 사용되어야 함
+            print(f"Warning: Ticker '{ticker}' might be an index/currency, which is not fully supported by this price lookup function.")
+            return {
+                "ticker": ticker,
+                "current_price": "N/A",
+                "purchase_price": purchase_price,
+                "quantity": quantity,
+                "profit_loss_per_share": "N/A",
+                "profit_loss_total": "N/A",
+                "profit_loss_percentage": "N/A",
+                "error": "This function is designed for stock tickers only (not indices/currencies)."
+            }
+
 
         # 가장 최신 close_price를 가져오기 위해 'time' 기준으로 정렬하여 1개만 가져옵니다.
-        response = supabase_client_global.table(table_name).select("close_price").eq('ticker', ticker).order('time', desc=True).limit(1).execute()
+        # 변경: korean_stocks/us_stocks 테이블에서 'time' 컬럼을 사용하도록 수정
+        response = supabase_client_global.table(table_name).select("close_price").eq(ticker_filter_col, ticker).order(order_col, desc=True).limit(1).execute()
         
         data = response.data
         
@@ -181,20 +195,22 @@ def get_single_stock_info(ticker: str):
     """
     특정 티커의 현재 주가 정보만 반환합니다. (포트폴리오 정보 없이)
     """
-    # purchase_price와 quantity를 None으로 전달하여 손익 계산을 건너뜁니다.
+    # purchase_price와 quantity를 None으로 전달하여 손익 계산을 건너뜜
     stock_info = get_stock_price_and_info(ticker, purchase_price=None, quantity=None)
     
     # Supabase에서 회사 이름도 조회 (있다면)
     company_name = ticker # 기본값
     try:
-        # 미국 주식 정보 테이블에 회사 이름이 있는지 먼저 검색
-        response_us = supabase_client_global.table("us_stocks_info").select("company_name").eq('ticker', ticker).limit(1).execute()
-        if response_us.data:
-            company_name = response_us.data[0].get('company_name', ticker)
-        else: # 한국 주식 정보 테이블에 회사 이름이 있는지 검색
-            response_kr = supabase_client_global.table("korean_stocks_info").select("company_name").eq('ticker', ticker).limit(1).execute()
-            if response_kr.data:
-                company_name = response_kr.data[0].get('company_name', ticker)
+        # 이 함수는 주식 티커에 대해서만 이름 조회를 시도하며, 지수/환율은 건너뜜
+        if not (ticker.startswith('^') or ticker.endswith('=X')):
+            # 미국 주식 정보 테이블에 회사 이름이 있는지 먼저 검색
+            response_us = supabase_client_global.table("us_stocks_info").select("company_name").eq('ticker', ticker).limit(1).execute()
+            if response_us.data:
+                company_name = response_us.data[0].get('company_name', ticker)
+            else: # 한국 주식 정보 테이블에 회사 이름이 있는지 검색
+                response_kr = supabase_client_global.table("korean_stocks_info").select("company_name").eq('ticker', ticker).limit(1).execute()
+                if response_kr.data:
+                    company_name = response_kr.data[0].get('company_name', ticker)
     except Exception as e:
         print(f"🚨 회사 이름 조회 중 오류 발생: {e}")
 
@@ -221,13 +237,11 @@ def handle_start_analysis_request(data):
 
     print(f"🚀 웹 요청: '{ticker}' 기업에 대한 전체 분석 파이프라인을 시작합니다.")
     
-    # run_full_analysis_pipeline은 선택된 주식의 정보만 넘겨주므로, 이 부분은 그대로 유지합니다.
     threading.Thread(target=run_full_analysis_pipeline, args=(ticker, request.sid)).start()
 
 def run_full_analysis_pipeline(ticker: str, sid: str):
     """
     전체 분석 파이프라인을 실행하고 진행 상황을 클라이언트에 emit합니다.
-    선택된 단일 주식에 대한 포트폴리오 정보만 여기서 전달합니다.
     """
     initial_state: AnalysisState = {
         "ticker": ticker,
@@ -238,7 +252,11 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
         "selected_domestic_news": None,
         "market_analysis_result": None,
         "final_report": None,
-        # 에이전트가 상태에 추가할 데이터를 위한 필드 (data_prep_agent에서 채워질 예정)
+        # 에이전트가 상태에 추가할 데이터를 위한 필드 (market_correlation_agent에서 채워질 예정)
+        "historical_prices": None,
+        "news_event_markers": None,
+        "all_analyzed_tickers": None,
+        # 기존 필드 (분석 모델 내부에서만 사용)
         "all_us_news": [],
         "all_domestic_news": [],
         "us_market_entities": [],
@@ -297,16 +315,29 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
         print("✅ [백엔드] 최종 투자 브리핑 생성 완료")
 
         final_report = current_state.get("final_report")
-        # 에이전트에서 이미 잘 가공된 상태의 뉴스 리스트를 가져옵니다.
         selected_news_for_frontend = current_state.get("selected_news", [])
         selected_domestic_news_for_frontend = current_state.get("selected_domestic_news", [])
+        
+        # 새롭게 추가된 데이터 필드를 추출
+        historical_prices = current_state.get("historical_prices", {})
+        news_event_markers = current_state.get("news_event_markers", {})
+        all_analyzed_tickers = current_state.get("all_analyzed_tickers", [])
+        
+        # market_analysis_result에서 correlation_matrix 추출
+        market_analysis_result = current_state.get("market_analysis_result", {})
+        correlation_matrix = market_analysis_result.get("correlation_matrix", {})
+
 
         if final_report:
             socketio.emit('analysis_complete', {
                 'report': final_report,
                 'portfolio_summary': portfolio_summary,
-                'selected_news': selected_news_for_frontend,          # 여기에 추가
-                'selected_domestic_news': selected_domestic_news_for_frontend, # 여기에 추가
+                'selected_news': selected_news_for_frontend,
+                'selected_domestic_news': selected_domestic_news_for_frontend,
+                'historical_prices': historical_prices,             # 추가
+                'news_event_markers': news_event_markers,         # 추가
+                'all_analyzed_tickers': all_analyzed_tickers,     # 추가
+                'correlation_matrix': correlation_matrix,         # 추가
                 'message': '분석 완료!'
             }, room=sid)
         else:

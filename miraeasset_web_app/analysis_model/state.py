@@ -1,3 +1,4 @@
+# analysis_model/state.py
 # 이 파일은 각 에이전트끼리의 원활한 통신을 위하여 미리 class를 지정한 것이다.
 # 각 에이전트는 이 구조를 기반으로 데이터를 주고받으며,
 # 상태를 업데이트합니다.
@@ -5,7 +6,7 @@
 # 파이프라인의 각 단계에서 데이터를 효율적으로 처리할 수 있도록 돕습니다.
 
 from __future__ import annotations
-from typing import TypedDict, List, Dict, Any
+from typing import TypedDict, List, Dict, Any, Optional
 
 # LangGraph는 상태 객체의 필드가 변경될 때마다 전체 객체를 복사하는 것이 아니라
 # 변경된 필드만 효율적으로 업데이트합니다.
@@ -14,14 +15,13 @@ from typing import TypedDict, List, Dict, Any
 # 각 에이전트는 자신의 작업이 끝난 후 해당하는 필드를 채워넣게 됩니다.
 
 
-
 # 아래의 class는 데이터를 어떻게 구성해야하는지에 대한 설계도이다.
 class SelectedNews(TypedDict):
     """뉴스 분석 에이전트가 선별한 개별 뉴스 정보를 담는 구조"""
     title: str  # 뉴스 제목
     url: str    # 뉴스 원문 URL
     summary: str # 뉴스 요약
-    published_date: str
+    published_date: str # 날짜 필드 (추가)
     entities: List[str] # 뉴스에서 추출된 핵심 엔티티 (예: 'SK하이닉스', 'SOX 지수')
     related_metrics: List[str] # 엔티티의 Ticker
 
@@ -31,8 +31,8 @@ class DomesticNews(TypedDict):
     url: str
     summary: str
     publish_date: str
-    entities: List[str]         # <<< 추가: 뉴스에서 추출된 핵심 엔티티
-    related_metrics: List[str]  # <<< 추가: 엔티티의 Ticker
+    entities: List[str]         # 뉴스에서 추출된 핵심 엔티티
+    related_metrics: List[str]  # 엔티티의 Ticker
 
 class TickerPriceData(TypedDict):
     """개별 티커의 시계열 데이터와 요약 정보"""
@@ -53,6 +53,7 @@ class MarketAnalysisResult(TypedDict):
     """시장 상관관계 및 뉴스 영향 분석 결과를 담는 구조"""
     correlation_summary: List[str]
     news_impact_data: List[NewsImpactData]
+    correlation_matrix: Optional[Dict[str, Dict[str, float]]] # <--- 추가: 상관관계 매트릭스
 
 class PerEntityAnalysis(TypedDict):
     """개별 주체(기업/지수)에 대한 분석 내용"""
@@ -84,3 +85,7 @@ class AnalysisState(TypedDict):
     market_analysis_result: MarketAnalysisResult | None
     final_report: FinalReport | None
 
+    # --- 그래프 시각화를 위해 추가된 필드 ---
+    historical_prices: Optional[Dict[str, List[Dict[str, Any]]]] # 티커별 {'date': 'YYYY-MM-DD', 'close': float} 리스트
+    news_event_markers: Optional[Dict[str, List[str]]] # 티커별 뉴스 발생 날짜 리스트 {'AAPL': ['YYYY-MM-DD', ...]}
+    all_analyzed_tickers: Optional[List[str]] # 분석 파이프라인에서 다룬 모든 관련 티커 목록 (AAPL, NVDA, ^NDX, USDKRW=X 등)
