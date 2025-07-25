@@ -7,7 +7,7 @@
 
 import os
 import json
-import time
+import timez
 from typing import Dict, Any, List
 
 # --- 추가된 라이브러리 ---
@@ -24,6 +24,9 @@ from google.genai import types
 
 # 상위 폴더에 있는 state.py 모듈에서 AnalysisState 클래스를 가져옵니다.
 from ..state import AnalysisState, SelectedNews
+
+print("=== news_analyst_agent.py 파일이 로드되었습니다! ===")
+print(f"=== 로드된 파일 경로: {__file__} ===")
 
 # .env 파일에서 환경 변수를 로드합니다.
 load_dotenv()

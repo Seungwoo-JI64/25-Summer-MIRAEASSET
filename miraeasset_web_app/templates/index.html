@@ -15,8 +15,6 @@
     <!-- Chart.js Annotation Plugin for news markers -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
     
-    <!-- !!! 중요: 이 <style> 태그 안의 내용은 당신의 기존 프로젝트 CSS로 대체해야 합니다 !!! -->
-    <!-- !!! 단, 시장 데이터 시각화 관련 스타일 (.ticker-chart-block, .chart-container, .correlation-table 등)은 유지하거나 병합해야 합니다. !!! -->
     <style>
         /* 기본 스타일 - 이 부분을 당신의 원래 프로젝트 CSS로 대체하세요. */
         body { font-family: 'Arial', sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; line-height: 1.6;}
@@ -115,6 +113,7 @@
         .profit { color: #00a000; font-weight: bold; } /* 녹색 */
         .loss { color: #d00000; font-weight: bold; } /* 빨간색 */
         .neutral { color: #666; } /* 회색 */
+        .blue { color: #007bff; font-weight: bold; } /* 파란색 */
 
         /* 포트폴리오 개요 스타일 */
         #portfolio-overview {
@@ -358,6 +357,89 @@
         .corr-strong-negative { background-color: #f5c6cb; color: #721c24; font-weight: bold; }
         .corr-self { background-color: #e9ecef; color: #495057; font-weight: bold; } /* Diagonal (self-correlation) */
 
+        /* --- 새로 추가된/수정된 스타일 --- */
+        /* 상단 요약 컨테이너 */
+        .top-summary-flex-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #eaf6ff;
+            border: 1px solid #cce7ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .top-summary-item {
+            text-align: center;
+            padding: 0 15px;
+        }
+        .summary-label {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .summary-value {
+            font-size: 2.2em; /* 핵심 숫자는 더 크게 */
+            font-weight: bold;
+            color: #333; /* 기본값, profit/loss/blue로 오버라이드됨 */
+        }
+
+        /* 시장 섹션 제목 */
+        .market-section-title {
+            color: #0056b3;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        /* 통화 전환 버튼 */
+        .currency-toggle-buttons {
+            text-align: right;
+            margin-bottom: 15px;
+        }
+        .currency-toggle-btn {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-left: 5px;
+            transition: background-color 0.2s, color 0.2s;
+            font-size: 0.9em;
+        }
+        .currency-toggle-btn.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        .currency-toggle-btn:hover:not(.active) {
+            background-color: #e2e6ea;
+        }
+
+        /* 주식 없는 메시지 */
+        .no-stock-message {
+            text-align: center;
+            color: #777;
+            font-style: italic;
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px dashed #ddd;
+            border-radius: 5px;
+            background-color: #fcfcfc;
+        }
+
+        /* 상세 포트폴리오 테이블 조정 */
+        #portfolio-overview table {
+            background-color: #fff;
+        }
+        #portfolio-overview th, #portfolio-overview td {
+            font-size: 0.95em; /* 상세 테이블은 약간 작게 */
+        }
+
     </style>
 </head>
 <body>
@@ -486,6 +568,9 @@
                 correlationMatrix: {}
             };
 
+            // 환율 (예시, 실제 서비스에서는 백엔드에서 받아와야 합니다)
+            const USD_TO_KRW_EXCHANGE_RATE = 1350;
+
 
             loadInitialData();
 
@@ -545,52 +630,44 @@
                 }
             }
 
-            function displayPortfolioOverview(stocks, totalSummary) {
-                let overviewHtml = `<h2>내 전체 포트폴리오 현황</h2>`;
-                
-                if (stocks && stocks.length > 0) {
-                    overviewHtml += `<table>`;
-                    overviewHtml += `<thead><tr><th>종목명</th><th>티커</th><th>구매가</th><th>수량</th><th>현재가</th><th>주당 손익</th><th>총 손익</th><th>손익률</th></tr></thead>`;
-                    overviewHtml += `<tbody>`;
-                    
-                    stocks.forEach(stock => {
-                        const profitLossClass = getProfitLossClass(stock.profit_loss_percentage);
-                        overviewHtml += `<tr>`;
-                        overviewHtml += `<td>${stock.name}</td>`;
-                        overviewHtml += `<td>${stock.ticker}</td>`;
-                        overviewHtml += `<td>${formatNumber(stock.purchase_price, 2)}</td>`;
-                        overviewHtml += `<td>${stock.quantity}</td>`;
-                        overviewHtml += `<td>${formatNumber(stock.current_price, 2)}</td>`;
-                        overviewHtml += `<td class="${profitLossClass}">${formatNumber(stock.profit_loss_per_share, 2)}</td>`;
-                        overviewHtml += `<td class="${profitLossClass}">${formatNumber(stock.profit_loss_total, 2)}</td>`;
-                        overviewHtml += `<td class="${profitLossClass}">${formatNumber(stock.profit_loss_percentage, 2)}%</td>`;
-                        overviewHtml += `</tr>`;
-                    });
-                    overviewHtml += `</tbody>`;
-                    overviewHtml += `</table>`;
-
-                    const totalProfitLossClass = getProfitLossClass(totalSummary.total_profit_loss_percentage);
-                    overviewHtml += `<div class="total-summary" style="text-align: right; margin-top: 20px;">`;
-                    overviewHtml += `<p><strong>총 구매 가치:</strong> ${totalSummary.total_purchase_value.toFixed(2)}</p>`;
-                    overviewHtml += `<p><strong>총 현재 가치:</strong> ${totalSummary.total_current_value.toFixed(2)}</p>`;
-                    overviewHtml += `<p><strong>총 포트폴리오 손익:</strong> <span class="${totalProfitLossClass}">${totalSummary.total_profit_loss.toFixed(2)}</span></p>`;
-                    overviewHtml += `<p><strong>총 포트폴리오 손익률:</strong> <span class="${totalProfitLossClass}">${totalSummary.total_profit_loss_percentage.toFixed(2)}%</span></p>`;
-                    overviewHtml += `</div>`;
-
-                } else {
-                    overviewHtml += `<p>포트폴리오에 주식이 없습니다.</p>`;
+            // --- 통화 및 숫자 포맷팅 유틸리티 함수 ---
+            function getTickerMarketType(ticker) {
+                if (ticker.endsWith('.KS') || ticker.endsWith('.KQ')) {
+                    return 'KR';
                 }
-                portfolioOverviewDiv.innerHTML = overviewHtml;
+                // 접미사가 없는 경우 또는 다른 접미사는 미국 주식으로 간주
+                return 'US';
             }
 
-            function formatNumber(value, decimalPlaces) {
+            function formatCurrency(value, marketType, displayCurrency, isPercentage = false) {
                 if (value === 'N/A' || typeof value === 'undefined' || value === null) {
                     return 'N/A';
                 }
-                if (typeof value === 'number') {
-                    return value.toFixed(decimalPlaces);
+
+                if (isPercentage) {
+                    return `${parseFloat(value).toFixed(2)}%`;
                 }
-                return value;
+
+                let numericValue = parseFloat(value);
+                let formattedValue;
+                let symbol = '';
+
+                if (marketType === 'KR') {
+                    symbol = '₩';
+                    // 원화는 소수점 없이 반올림
+                    formattedValue = Math.round(numericValue).toLocaleString('ko-KR'); 
+                } else { // marketType === 'US' (달러)
+                    if (displayCurrency === 'KRW') {
+                        symbol = '₩';
+                        // USD -> KRW 변환 후 반올림
+                        formattedValue = Math.round(numericValue * USD_TO_KRW_EXCHANGE_RATE).toLocaleString('ko-KR');
+                    } else { // displayCurrency === 'USD'
+                        symbol = '$';
+                        // 달러는 소수점 두 자리 유지
+                        formattedValue = numericValue.toFixed(2).toLocaleString('en-US'); 
+                    }
+                }
+                return `${symbol} ${formattedValue}`;
             }
 
             function getProfitLossClass(percentage) {
@@ -599,6 +676,115 @@
                 if (percentage < 0) return 'loss';
                 return 'neutral';
             }
+            // --- // 통화 및 숫자 포맷팅 유틸리티 함수 ---
+
+
+            function displayPortfolioOverview(stocks, totalSummary) {
+                let overviewHtml = `<h2>내 전체 포트폴리오 현황</h2>`;
+                
+                // 상단 요약 섹션
+                const totalCurrentValue = totalSummary.total_current_value;
+                const totalProfitLoss = totalSummary.total_profit_loss; // 총 손익으로 현재 가치 색상 결정
+                const totalProfitLossPercentage = totalSummary.total_profit_loss_percentage;
+
+                // 총 손익에 따라 현재 보유 가치의 색상을 결정
+                const totalCurrentValueClass = (totalProfitLoss > 0) ? 'blue' : (totalProfitLoss < 0 ? 'loss' : 'neutral');
+                const totalProfitLossPercentageClass = getProfitLossClass(totalProfitLossPercentage);
+
+                overviewHtml += `<div class="top-summary-flex-container">`;
+                overviewHtml += `<div class="top-summary-item">`;
+                overviewHtml += `<div class="summary-label">현재 내 주식 보유 가치</div>`;
+                // 총 보유 가치는 항상 원화로 표시
+                overviewHtml += `<div class="summary-value ${totalCurrentValueClass}">${formatCurrency(totalCurrentValue, 'KR', 'KRW')}</div>`;
+                overviewHtml += `</div>`;
+                overviewHtml += `<div class="top-summary-item">`;
+                overviewHtml += `<div class="summary-label">총 손익률</div>`;
+                overviewHtml += `<div class="summary-value ${totalProfitLossPercentageClass}">${formatCurrency(totalProfitLossPercentage, '', '', true)}</div>`;
+                overviewHtml += `</div>`;
+                overviewHtml += `</div>`;
+
+                // 주식 구분
+                const koreanStocks = stocks.filter(s => getTickerMarketType(s.ticker) === 'KR');
+                const usStocks = stocks.filter(s => getTickerMarketType(s.ticker) === 'US');
+
+                // 국내 주식 섹션
+                overviewHtml += `<h2 class="market-section-title">국내주식</h2>`;
+                overviewHtml += buildStockTable(koreanStocks, 'KRW'); // 국내주식은 항상 KRW
+
+                // 해외 주식 섹션
+                overviewHtml += `<h2 class="market-section-title">해외주식</h2>`;
+                overviewHtml += `<div class="currency-toggle-buttons">`;
+                overviewHtml += `<button class="currency-toggle-btn active" data-currency="USD">USD</button>`;
+                overviewHtml += `<button class="currency-toggle-btn" data-currency="KRW">KRW</button>`;
+                overviewHtml += `</div>`;
+                overviewHtml += buildStockTable(usStocks, 'USD', 'us-stocks-table'); // 기본값 USD, ID 추가
+
+                portfolioOverviewDiv.innerHTML = overviewHtml;
+
+                // 통화 전환 버튼 이벤트 리스너 추가
+                document.querySelectorAll('.currency-toggle-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const currentDisplayCurrency = this.dataset.currency;
+                        document.querySelectorAll('.currency-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
+                        updateForeignStockDisplay(currentDisplayCurrency, usStocks);
+                    });
+                });
+            }
+
+            function buildStockTable(stocksToDisplay, defaultCurrency, tableId = '') {
+                if (!stocksToDisplay || stocksToDisplay.length === 0) {
+                    return `<p class="no-stock-message">보유한 주식이 없습니다.</p>`;
+                }
+                
+                let tableHtml = `<table ${tableId ? `id="${tableId}"` : ''} data-currency-display="${defaultCurrency}">`;
+                tableHtml += `<thead><tr><th>종목명</th><th>티커</th><th>구매가</th><th>수량</th><th>현재가</th><th>주당 손익</th><th>총 손익</th><th>손익률</th></tr></thead>`;
+                tableHtml += `<tbody>`;
+                
+                stocksToDisplay.forEach(stock => {
+                    const profitLossClass = getProfitLossClass(stock.profit_loss_percentage);
+                    const marketType = getTickerMarketType(stock.ticker);
+                    
+                    tableHtml += `<tr>`;
+                    tableHtml += `<td>${stock.name}</td>`;
+                    tableHtml += `<td>${stock.ticker}</td>`;
+                    tableHtml += `<td>${formatCurrency(stock.purchase_price, marketType, defaultCurrency)}</td>`;
+                    tableHtml += `<td>${stock.quantity}</td>`;
+                    tableHtml += `<td>${formatCurrency(stock.current_price, marketType, defaultCurrency)}</td>`;
+                    tableHtml += `<td class="${profitLossClass}">${formatCurrency(stock.profit_loss_per_share, marketType, defaultCurrency)}</td>`;
+                    tableHtml += `<td class="${profitLossClass}">${formatCurrency(stock.profit_loss_total, marketType, defaultCurrency)}</td>`;
+                    tableHtml += `<td class="${profitLossClass}">${formatCurrency(stock.profit_loss_percentage, '', '', true)}</td>`;
+                    tableHtml += `</tr>`;
+                });
+                tableHtml += `</tbody>`;
+                tableHtml += `</table>`;
+                return tableHtml;
+            }
+
+            function updateForeignStockDisplay(displayCurrency, usStocks) {
+                const usStocksTable = document.getElementById('us-stocks-table');
+                if (usStocksTable) {
+                    usStocksTable.dataset.currencyDisplay = displayCurrency;
+                    const tbody = usStocksTable.querySelector('tbody');
+                    let newTbodyHtml = '';
+                    usStocks.forEach(stock => {
+                        const profitLossClass = getProfitLossClass(stock.profit_loss_percentage);
+                        const marketType = getTickerMarketType(stock.ticker);
+                        newTbodyHtml += `<tr>`;
+                        newTbodyHtml += `<td>${stock.name}</td>`;
+                        newTbodyHtml += `<td>${stock.ticker}</td>`;
+                        newTbodyHtml += `<td>${formatCurrency(stock.purchase_price, marketType, displayCurrency)}</td>`;
+                        newTbodyHtml += `<td>${stock.quantity}</td>`;
+                        newTbodyHtml += `<td>${formatCurrency(stock.current_price, marketType, displayCurrency)}</td>`;
+                        newTbodyHtml += `<td class="${profitLossClass}">${formatCurrency(stock.profit_loss_per_share, marketType, displayCurrency)}</td>`;
+                        newTbodyHtml += `<td class="${profitLossClass}">${formatCurrency(stock.profit_loss_total, marketType, displayCurrency)}</td>`;
+                        newTbodyHtml += `<td class="${profitLossClass}">${formatCurrency(stock.profit_loss_percentage, '', '', true)}</td>`;
+                        newTbodyHtml += `</tr>`;
+                    });
+                    tbody.innerHTML = newTbodyHtml;
+                }
+            }
+
 
             function showError(message) {
                 errorMessageContainer.textContent = message;
@@ -744,14 +930,16 @@
                         stockInfoContent.innerHTML = `<p class="error">주식 정보 로드 실패: ${data.error}</p>`;
                     } else {
                         let infoHtml = `<h3>${data.name} (${data.ticker})</h3>`;
-                        infoHtml += `<p><strong>현재 가격:</strong> ${formatNumber(data.current_price, 2)}</p>`;
+                        const marketType = getTickerMarketType(data.ticker);
+
+                        infoHtml += `<p><strong>현재 가격:</strong> ${formatCurrency(data.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
                         
                         if (data.purchase_price !== null && data.purchase_price !== 'N/A' && data.purchase_price !== undefined) {
                             let profitLossClass = getProfitLossClass(data.profit_loss_percentage);
-                            infoHtml += `<p><strong>구매 가격:</strong> ${formatNumber(data.purchase_price, 2)} (수량: ${data.quantity})</p>`;
-                            infoHtml += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatNumber(data.profit_loss_per_share, 2)}</span></p>`;
-                            infoHtml += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatNumber(data.profit_loss_total, 2)}</span></p>`;
-                            infoHtml += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatNumber(data.profit_loss_percentage, 2)}%</span></p>`;
+                            infoHtml += `<p><strong>구매 가격:</strong> ${formatCurrency(data.purchase_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')} (수량: ${data.quantity})</p>`;
+                            infoHtml += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(data.profit_loss_per_share, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</span></p>`;
+                            infoHtml += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(data.profit_loss_total, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</span></p>`;
+                            infoHtml += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(data.profit_loss_percentage, '', '', true)}</span></p>`;
                         } else {
                             infoHtml += `<p><em>이 주식은 포트폴리오에 없거나 구매 정보가 없습니다.</em></p>`;
                         }
@@ -769,19 +957,22 @@
 
                 if (portfolioSummary) {
                     const stockName = portfolioSummary.name || portfolioSummary.ticker;
+                    const marketType = getTickerMarketType(portfolioSummary.ticker);
+                    const defaultDisplayCurrency = marketType === 'KR' ? 'KRW' : 'USD'; // 개별주식 보고서는 해당 주식의 통화로
+
                     html += `<div class="report-section" style="border-bottom: 2px solid #007bff;">`;
                     html += `<h2>${stockName} (${portfolioSummary.ticker}) 개별 보유 현황</h2>`;
                     if (portfolioSummary.message) {
                         html += `<p class="error">${portfolioSummary.message}</p>`;
                     } else {
-                        html += `<p><strong>구매 가격:</strong> ${formatNumber(portfolioSummary.purchase_price, 2)} (수량: ${portfolioSummary.quantity})</p>`;
-                        html += `<p><strong>현재 가격:</strong> ${formatNumber(portfolioSummary.current_price, 2)}</p>`;
+                        html += `<p><strong>구매 가격:</strong> ${formatCurrency(portfolioSummary.purchase_price, marketType, defaultDisplayCurrency)} (수량: ${portfolioSummary.quantity})</p>`;
+                        html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, defaultDisplayCurrency)}</p>`;
                         
                         let profitLossClass = getProfitLossClass(portfolioSummary.profit_loss_percentage);
 
-                        html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatNumber(portfolioSummary.profit_loss_per_share, 2)}</span></p>`;
-                        html += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatNumber(portfolioSummary.profit_loss_total, 2)}</span></p>`;
-                        html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatNumber(portfolioSummary.profit_loss_percentage, 2)}%</span></p>`;
+                        html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_per_share, marketType, defaultDisplayCurrency)}</span></p>`;
+                        html += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_total, marketType, defaultDisplayCurrency)}</span></p>`;
+                        html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_percentage, '', '', true)}</span></p>`;
                     }
                     html += `</div>`;
                 }
