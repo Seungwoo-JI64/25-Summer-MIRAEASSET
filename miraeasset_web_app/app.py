@@ -351,4 +351,8 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # Docker 환경은 프로덕션으로 간주될 수 있으므로 debug=False로 설정하고
+    # Eventlet/Gevent와 같은 WSGI 서버를 사용해야 하지만,
+    # 여기서는 테스트를 위해 allow_unsafe_werkzeug=True를 추가합니다.
+    # 실제 프로덕션에서는 Gunicorn과 같은 WSGI 서버를 Dockerfile의 CMD에서 사용해야 합니다.
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True, host='0.0.0.0') # host='0.0.0.0'을 추가합니다.
