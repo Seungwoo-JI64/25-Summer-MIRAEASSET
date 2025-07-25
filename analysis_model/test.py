@@ -19,7 +19,7 @@ from .agents.report_synthesizer_agent import run_report_synthesizer
 
 # 1. 분석을 시작할 기업 티커로 초기 상태를 설정합니다.
 initial_state: AnalysisState = {
-    "ticker": "000660.KS",  # SK하이닉스 예시
+    "ticker": "AAPL",  # SK하이닉스 예시
     "company_name": None,
     "company_description": None,
     "financial_health": None,
