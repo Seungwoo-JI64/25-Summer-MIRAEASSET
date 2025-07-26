@@ -1,0 +1,12 @@
+1. docker 이미지 생성
+docker build -t miraeasset-investment-app .
+
+2. docker 컨테이너 배포
+docker run -p 5000:5000 `
+-e SUPABASE_URL="https://hcmniqyaqybzhmzmaumh.supabase.co" `
+-e SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjbW5pcXlhcXliemhtem1hdW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0Mzk5NDgsImV4cCI6MjA2NzAxNTk0OH0.wj3P2BaI9_9LjXPULyKIYja20Xk3TbuqS916Sw83Pdg" `
+-e GEMINI_API_KEY="AIzaSyDkYM__gE0UyegX2-6BUaxjj7PivCPchk8" `
+-e GEMINI_API_KEY_2="AIzaSyAS7TgoOx4KFyv5htBrpDWFRN7SGs1Wees" `
+-e CLOVA_API_KEY="nv-954d9d9843374384bfe278a5169c2ee18Q6C" `
+-e CLOVA_REQUEST_ID="37e746486492410dab50545828f1edfb" `
+miraeasset-investment-app
