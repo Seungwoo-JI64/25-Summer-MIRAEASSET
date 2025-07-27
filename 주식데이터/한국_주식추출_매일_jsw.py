@@ -19,9 +19,10 @@ Ticker_KR=['005930.KS', '000660.KS', '207940.KS', '373220.KS', 'HYMTF', 'KB', '0
 kst = pytz.timezone('Asia/Seoul')
 # 현재 시간을 UTC+9 기준으로 가져오기
 today_kst = datetime.now(kst)
-# yfinance의 end 날짜는 포함되지 않으므로, start를 오늘로, end를 내일로 설정하여 오늘 데이터 추출
-start_date = today_kst.strftime('%Y-%m-%d')
-end_date = (today_kst + timedelta(days=1)).strftime('%Y-%m-%d')
+# yfinance의 end 날짜는 포함되지 않으므로, start를 어제로, end를 오늘로 설정하여 오늘 데이터 추출
+# start_date = today_kst.strftime('%Y-%m-%d')
+start_date = (today_kst - timedelta(days=1)).strftime('%Y-%m-%d')
+end_date = today_kst.strftime('%Y-%m-%d')
 
 # API 호출
 ## 1. 한국 주식
