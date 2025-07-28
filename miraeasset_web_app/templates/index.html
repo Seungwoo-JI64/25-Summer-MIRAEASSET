@@ -433,7 +433,7 @@
             <!-- NEW: 검색 영역 추가 -->
             <div class="search-area-container">
                 <label for="stockSearchInput">다른 주식 검색:</label>
-                <input type="text" id="stockSearchInput" placeholder="기업명 또는 티커를 입력하세요">
+                <input type="text" id="stockSearchInput" placeholder="재무제표 기업명 또는 티커">
                 <button id="searchAnalysisButton" style="display: none;">검색 분석 시작</button>
                 <div id="searchResults" class="autocomplete-results"></div> <!-- 검색 결과 표시 영역 -->
             </div>
@@ -565,6 +565,27 @@
             // 환율 (예시, 실제 서비스에서는 백엔드에서 받아와야 합니다)
             const USD_TO_KRW_EXCHANGE_RATE = 1350;
 
+            // Chart.js를 위한 색상 팔레트 정의 (구분하기 쉬운 색상들)
+            const CHART_COLORS = [
+                'rgb(75, 192, 192)',   // Teal
+                'rgb(255, 99, 132)',    // Red
+                'rgb(54, 162, 235)',    // Blue
+                'rgb(255, 205, 86)',    // Yellow
+                'rgb(153, 102, 255)',   // Purple
+                'rgb(255, 159, 64)',    // Orange
+                'rgb(0, 128, 0)',       // Dark Green
+                'rgb(255, 0, 255)',     // Magenta
+                'rgb(0, 206, 209)',     // Dark Turquoise
+                'rgb(128, 0, 128)'      // Dark Purple
+            ];
+            let currentColorIndex = 0; // 팔레트에서 색상을 가져올 인덱스
+
+            function getNextColor() {
+                const color = CHART_COLORS[currentColorIndex % CHART_COLORS.length];
+                currentColorIndex++; // 다음 호출을 위해 인덱스 증가
+                return color;
+            }
+
 
             loadInitialData();
 
@@ -641,7 +662,7 @@
                     }
 
                     if (data.length === 0) {
-                        searchResultsDiv.innerHTML = `<div class="autocomplete-item">일치하는 결과가 없습니다.</div>`;
+                        searchResultsDiv.innerHTML = `<div class="autocomplete-item">일치하는 재무제표 기업이 없습니다.</div>`;
                         searchResultsDiv.style.display = 'block';
                         return;
                     }
@@ -714,6 +735,8 @@
                         const option = document.createElement('option');
                         option.value = stock.ticker;
                         option.textContent = stock.name;
+                        // NEW: is_analyzable 플래그를 data-analyzable 속성으로 저장
+                        option.dataset.analyzable = stock.is_analyzable; 
                         stockSelect.appendChild(option);
                         // 초기 로딩 시 포트폴리오 주식 이름 캐시
                         cachedAnalysisData.allKnownTickerNames[stock.ticker] = stock.name;
@@ -901,16 +924,28 @@
             // startAnalysis 함수 수정: 옵션으로 티커를 받을 수 있게 함
             window.startAnalysis = function(tickerToAnalyze = null) {
                 let ticker;
+                let isAnalyzable = true; // 검색된 주식의 경우 기본적으로 분석 가능하다고 가정
+
                 if (tickerToAnalyze) { // 검색 기능을 통해 티커가 직접 전달된 경우
                     ticker = tickerToAnalyze;
+                    // 검색 API는 이미 재무제표 기업만 반환하므로, 여기서 isAnalyzable 확인 불필요
                 } else { // 포트폴리오 드롭다운을 통해 선택된 경우
                     const stockSelect = document.getElementById('stockSelect');
                     ticker = stockSelect.value;
-                }
 
-                if (!ticker) {
-                    showError('개별 주식 분석을 위해 주식을 선택해 주세요!');
-                    return;
+                    if (!ticker) {
+                        showError('개별 주식 분석을 위해 주식을 선택해 주세요!');
+                        return;
+                    }
+
+                    // NEW: 선택된 포트폴리오 주식의 data-analyzable 플래그 확인
+                    const selectedOption = stockSelect.options[stockSelect.selectedIndex];
+                    isAnalyzable = selectedOption.dataset.analyzable === 'true'; // 문자열 'true'/'false'를 boolean으로 변환
+
+                    if (!isAnalyzable) {
+                        showError('이 기업은 재무제표 분석 데이터가 없어 전체 투자 브리핑을 제공할 수 없습니다. 포트폴리오 현황에서 주가 정보만 확인 가능합니다.');
+                        return; // 분석 요청을 보내지 않고 중단
+                    }
                 }
 
                 hideError();
@@ -1192,6 +1227,9 @@
                 const chartAnnotations = [];
                 let latestDate = null;
 
+                // 색상 인덱스 초기화: 클릭할 때마다 차트의 라인 색상이 팔레트의 첫 번째부터 시작하도록
+                currentColorIndex = 0; 
+
                 selectedTickers.forEach(ticker => {
                     const data = cachedAnalysisData.historicalPrices[ticker];
                     if (data && data.length > 0) {
@@ -1234,7 +1272,7 @@
                              chartDatasets.push({
                                 label: `${displayName} (% 변화)`, 
                                 data: datasetData,
-                                borderColor: getRandomColor(),
+                                borderColor: getNextColor(), // ⚠️ 변경: 팔레트 색상 사용
                                 tension: 0.1,
                                 fill: false,
                                 pointRadius: 0
@@ -1277,6 +1315,28 @@
                         });
                     }
                 });
+
+                // ⚠️ 추가: 0%를 나타내는 가로선 Annotation
+                chartAnnotations.push({
+                    type: 'line',
+                    mode: 'horizontal',
+                    scaleID: 'y',
+                    value: 0, // y축 0 위치에 라인
+                    borderColor: 'black', // 검은색
+                    borderWidth: 2,       // 두께
+                    label: {
+                        content: '0%', // 라인에 표시할 텍스트
+                        enabled: true,
+                        position: 'end', // 라벨 위치 (선 끝)
+                        font: { size: 10, weight: 'bold' },
+                        color: 'black',
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        yAdjust: -5,
+                        padding: 3,
+                        borderRadius: 3
+                    }
+                });
+
                 console.log("Chart Datasets prepared:", chartDatasets);
                 console.log("Chart Annotations prepared:", chartAnnotations);
                 console.log("Latest Date for chart:", latestDate);
@@ -1288,27 +1348,13 @@
                 }
             }
 
-            // 뉴스 상세 모달을 표시하는 새로운 함수
-            function showNewsDetailsModal(clickedTicker, clickedDate, newsItems) {
-                // 모달 제목에 기업 이름 사용
-                const displayName = cachedAnalysisData.allKnownTickerNames[clickedTicker] || clickedTicker;
-                newsDetailsModalTitle.textContent = `${displayName} - ${new Date(clickedDate).toLocaleDateString()} 뉴스`;
-                let newsHtml = '';
-                if (newsItems && newsItems.length > 0) {
-                    newsItems.forEach(news => {
-                        const newsUrl = news.url || '#';
-                        newsHtml += `<div class="news-modal-item">`;
-                        newsHtml += `<h4><a href="${newsUrl}" target="_blank">${news.title}</a></h4>`;
-                        newsHtml += `<p>${news.summary}</p>`;
-                        newsHtml += `</div>`;
-                    });
-                } else {
-                    newsHtml += `<p>이 날짜에 대한 뉴스를 찾을 수 없습니다.</p>`;
-                }
-                newsDetailsContent.innerHTML = newsHtml;
-                newsDetailsModal.style.display = 'flex'; 
-            }
-
+            // getRandomColor 함수는 더 이상 사용되지 않으므로 삭제하거나 주석 처리
+            // function getRandomColor() {
+            //     const r = Math.floor(Math.random() * 200);
+            //     const g = Math.floor(Math.random() * 200);
+            //     b = Math.floor(Math.random() * 200);
+            //     return `rgb(${r},${g},${b})`;
+            // }
 
             function renderPriceChart(datasets, annotations, latestDate) {
                 console.log("Attempting to render chart...");
@@ -1342,7 +1388,7 @@
                         plugins: {
                             title: {
                                 display: true,
-                                text: '선택된 종목/지표 주가 추이 (백분율 변화)' 
+                                text: '선택된 종목/지표 주가 추이 (기준 가격 대비 백분율 변화)' // 타이틀 변경
                             },
                             tooltip: {
                                 mode: 'index',
@@ -1398,13 +1444,6 @@
                     }
                 });
                 console.log("Chart rendered successfully. myChart instance:", myChart);
-            }
-
-            function getRandomColor() {
-                const r = Math.floor(Math.random() * 200);
-                const g = Math.floor(Math.random() * 200);
-                const b = Math.floor(Math.random() * 200);
-                return `rgb(${r},${g},${b})`;
             }
         }); // DOMContentLoaded 끝
     </script>
