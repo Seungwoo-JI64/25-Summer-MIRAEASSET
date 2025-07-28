@@ -112,15 +112,14 @@ COMMON_INDICES_CURRENCIES = {
 }
 
 
-# 🚨 재수정된 부분: _get_company_name_from_db 함수 로직 변경 (영문 이름 최우선, financial_statements는 fallback 아님)
+# 🚨 최종 수정된 부분: _get_company_name_from_db 함수 로직 (영문 이름 최우선)
 def _get_company_name_from_db(ticker: str) -> Optional[str]:
     """
     Supabase에서 티커에 해당하는 회사 이름을 조회합니다.
-    조회 우선순위:
-    1. 고정 지수/환율 이름 (분석 에이전트에서는 티커로 사용되나, UI 표시용 이름)
-    2. korean_stocks/us_stocks (분석에 선호되는 영문 표준 이름)
-    이 함수는 분석 에이전트가 사용할 '회사 이름'을 가져오는 데 초점을 맞춥니다.
-    따라서 financial_statements의 이름은 여기서 고려하지 않습니다.
+    조회 우선순위 (분석 에이전트가 사용할 'company_name'을 위해 영문 이름 우선):
+    1. 고정 지수/환율 이름 (UI 표시 목적)
+    2. korean_stocks/us_stocks (분석 에이전트에게 필요한 영문 표준 이름)
+    이 함수는 financial_statements 테이블의 이름을 분석 에이전트가 직접 사용하도록 반환하지 않습니다.
     """
     # 1. 고정된 지수/환율 이름 확인 (UI 표시 목적의 이름)
     if ticker in COMMON_INDICES_CURRENCIES:
@@ -151,7 +150,8 @@ def _get_company_name_from_db(ticker: str) -> Optional[str]:
         print(f"🚨 Supabase에서 회사 이름 조회 중 오류 발생 (_get_company_name_from_db - stocks 테이블): {e}")
 
     # korean_stocks 또는 us_stocks에서 영문 이름을 찾지 못했으면 None 반환
-    # financial_statements의 이름은 '분석' 목적에서는 사용하지 않음
+    # financial_statements의 이름은 '분석' 목적에서는 사용하지 않음.
+    # 이 경우 run_full_analysis_pipeline에서 이 None 값을 체크하여 분석을 중단시킴.
     return None
 
 
@@ -343,6 +343,7 @@ def search_stocks():
     # 재무제표 분석 가능한 기업 캐시 내에서만 검색
     unique_results = {}
     for company_info in _financial_statement_companies: # 미리 캐싱된 목록 순회 (이름은 financial_statements 기준)
+        # 이 company_info['ticker']와 company_info['name']은 _initialize_financial_statement_cache에서 유효성 검증 완료됨
         ticker = company_info['ticker']
         name = company_info['name'] # 이 name은 financial_statements에 있는 이름 (한국어일 수 있음)
 
@@ -442,7 +443,7 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
             )
             # 포트폴리오 요약의 이름은 portfolio.json에 있는 이름을 사용 (UI 목적)
             portfolio_summary['name'] = selected_stock_portfolio_info.get('name') 
-            # 만약 portfolio.json에 이름이 없으면 financial_statements 캐시에서 가져옴
+            # 만약 portfolio.json에 이름이 없으면 financial_statements 캐시에서 가져옴 (한국어일 수 있음)
             if not portfolio_summary['name'] or portfolio_summary['name'] == ticker:
                 for fs_company in _financial_statement_companies:
                     if fs_company['ticker'] == ticker:
