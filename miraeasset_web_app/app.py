@@ -330,33 +330,35 @@ def get_single_stock_info(ticker: str):
     return jsonify(stock_info)
 
 
-# NEW: 주식 검색 엔드포인트 (재무제표 기업 내에서만 검색)
-@app.route('/search_stocks', methods=['GET'])
-def search_stocks():
-    query = request.args.get('query', '').strip().lower() # 쿼리를 소문자로 변환하여 대소문자 구분 없이 매칭
-    if not query:
-        return jsonify([])
+# NEW: 재무제표 기업 목록을 모두 반환하는 엔드포인트 추가
+@app.route('/analyzable_stocks', methods=['GET'])
+def get_analyzable_stocks_list():
+    """
+    재무제표 분석이 가능한 모든 기업의 티커와 이름을 반환합니다.
+    (otherStockSelect 드롭다운을 채우는 데 사용됩니다.)
+    """
+    return jsonify(_financial_statement_companies) # 이미 캐시된 리스트 반환
 
-    results = []
-    MAX_SEARCH_RESULTS = 20 # 반환할 최대 검색 결과 수
 
-    # 재무제표 분석 가능한 기업 캐시 내에서만 검색
-    unique_results = {}
-    for company_info in _financial_statement_companies: # 미리 캐싱된 목록 순회 (이름은 financial_statements 기준)
-        # 이 company_info['ticker']와 company_info['name']은 _initialize_financial_statement_cache에서 유효성 검증 완료됨
-        ticker = company_info['ticker']
-        name = company_info['name'] # 이 name은 financial_statements에 있는 이름 (한국어일 수 있음)
-
-        if query in ticker.lower() or query in name.lower():
-            # 검색 결과에는 financial_statements에 있는 이름과 티커를 그대로 반환
-            unique_results[ticker] = {'ticker': ticker, 'name': name}
-            if len(unique_results) >= MAX_SEARCH_RESULTS:
-                break # 최대 결과 수 도달 시 중지
-
-    results = list(unique_results.values())
-    final_results = sorted(results, key=lambda x: x['name'])[:MAX_SEARCH_RESULTS]
-    
-    return jsonify(final_results)
+# OLD: 주식 검색 엔드포인트 (이제 사용되지 않음 - 주석 처리 또는 삭제 가능)
+# @app.route('/search_stocks', methods=['GET'])
+# def search_stocks():
+#     # 이 엔드포인트는 이제 otherStockSelect 드롭다운으로 대체되었으므로 사용되지 않습니다.
+#     # 필요하면 삭제하거나 주석 처리하세요.
+#     query = request.args.get('query', '').strip().lower() 
+#     if not query: return jsonify([])
+#     results = []
+#     MAX_SEARCH_RESULTS = 20
+#     unique_results = {}
+#     for company_info in _financial_statement_companies:
+#         ticker = company_info['ticker']
+#         name = company_info['name']
+#         if query in ticker.lower() or query in name.lower():
+#             unique_results[ticker] = {'ticker': ticker, 'name': name}
+#             if len(unique_results) >= MAX_SEARCH_RESULTS: break
+#     results = list(unique_results.values())
+#     final_results = sorted(results, key=lambda x: x['name'])[:MAX_SEARCH_RESULTS]
+#     return jsonify(final_results)
 
 
 # SocketIO 연결 시 이벤트 핸들러
@@ -427,20 +429,27 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
         }
         current_state = initial_state.copy()
         
-        # 선택된 주식의 포트폴리오 정보 찾기 (기존 로직 유지)
+        # 🚨 NEW: portfolio_summary에 is_portfolio_holding 플래그 추가
+        is_portfolio_holding = False
         selected_stock_portfolio_info = None
         for stock_data in _cached_portfolio_initial_data:
             if stock_data.get('ticker') == ticker:
                 selected_stock_portfolio_info = stock_data
+                is_portfolio_holding = True
                 break
 
-        portfolio_summary = {} # 단일 주식 요약 정보
-        if selected_stock_portfolio_info:
-            portfolio_summary = get_stock_price_and_info(
+        portfolio_summary = {
+            "ticker": ticker,
+            "is_portfolio_holding": is_portfolio_holding # 🚨 플래그 추가
+        }
+
+        if is_portfolio_holding:
+            summary_from_db = get_stock_price_and_info(
                 ticker,
                 selected_stock_portfolio_info.get('purchase_price', 0),
                 selected_stock_portfolio_info.get('quantity', 0)
             )
+            portfolio_summary.update(summary_from_db)
             # 포트폴리오 요약의 이름은 portfolio.json에 있는 이름을 사용 (UI 목적)
             portfolio_summary['name'] = selected_stock_portfolio_info.get('name') 
             # 만약 portfolio.json에 이름이 없으면 financial_statements 캐시에서 가져옴 (한국어일 수 있음)
@@ -456,13 +465,14 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
                 if fs_company['ticker'] == ticker:
                     display_name_from_fs = fs_company['name']
                     break
-
-            portfolio_summary = {
-                "ticker": ticker,
+            
+            # 최소한의 정보만 제공하고, purchase_price, quantity 등은 None
+            portfolio_summary.update({
                 "message": "선택된 주식의 포트폴리오 정보(구매가, 수량)를 찾을 수 없습니다.",
-                "name": display_name_from_fs # financial_statements에서 가져온 이름 (한국어일 수 있음)
-            }
-            print(portfolio_summary['message'])
+                "name": display_name_from_fs, 
+                "current_price": get_stock_price_and_info(ticker).get('current_price', 'N/A') # 현재 가격은 가져와서 표시
+            })
+            print(f"선택된 주식의 포트폴리오 정보(구매가, 수량)를 찾을 수 없습니다: {ticker}")
 
 
         try:
