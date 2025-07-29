@@ -21,7 +21,7 @@ class SelectedNews(TypedDict):
     title: str  # 뉴스 제목
     url: str    # 뉴스 원문 URL
     summary: str # 뉴스 요약
-    published_date: str # 날짜 필드 (추가)
+    publish_date: str # 날짜 필드 (published_date -> publish_date로 통일성을 위해 수정)
     entities: List[str] # 뉴스에서 추출된 핵심 엔티티 (예: 'SK하이닉스', 'SOX 지수')
     related_metrics: List[str] # 엔티티의 Ticker
 
@@ -69,6 +69,7 @@ class FinalReport(TypedDict):
     """최종 생성된 '개장 전 투자 브리핑'의 구조"""
     report_title: str
     briefing_summary: str
+    company_ko_description: str # 🚨 NEW: ko_summary를 위한 필드 추가
     news_analysis: NewsAnalysis
     strategy_suggestion: str
 
@@ -77,8 +78,9 @@ class FinalReport(TypedDict):
 class AnalysisState(TypedDict):
     """전체 분석 파이프라인의 상태를 관리하는 중앙 데이터 객체"""
     ticker: str | None
-    company_name: str | None
-    company_description: str | None
+    company_name: str | None # UI 표시용 이름 (한국어 가능)
+    company_description: str | None # 영문 요약 (LLM 프롬프트용)
+    ko_company_description: str | None # 🚨 NEW: ko_summary를 위한 필드
     financial_health: str | None
     selected_news: List[SelectedNews] | None           # 해외 뉴스
     selected_domestic_news: List[DomesticNews] | None  # 국내 뉴스

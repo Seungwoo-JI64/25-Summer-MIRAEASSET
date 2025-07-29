@@ -428,15 +428,19 @@
             <select id="stockSelect">
                 <option value="">-- 주식을 선택하세요 --</option>
             </select>
+            <label for="otherStockSelect" style="margin-left: 15px;">재무제표 기업 검색:</label>
+            <select id="otherStockSelect">
+                <option value="">-- 기업을 선택하세요 --</option>
+            </select>
             <button onclick="startAnalysis()">분석 시작</button>
             
-            <!-- NEW: 검색 영역 추가 -->
-            <div class="search-area-container">
+            <!-- OLD: 검색 영역 (이제 사용되지 않음 - 주석 처리 또는 삭제 가능) -->
+            <!-- <div class="search-area-container">
                 <label for="stockSearchInput">다른 주식 검색:</label>
                 <input type="text" id="stockSearchInput" placeholder="재무제표 기업명 또는 티커">
                 <button id="searchAnalysisButton" style="display: none;">검색 분석 시작</button>
-                <div id="searchResults" class="autocomplete-results"></div> <!-- 검색 결과 표시 영역 -->
-            </div>
+                <div id="searchResults" class="autocomplete-results"></div>
+            </div> -->
         </div>
 
         <div id="loading">
@@ -536,10 +540,13 @@
             const newsDetailsContent = document.getElementById('newsDetailsContent');
             const closeNewsDetailsModalButton = document.querySelector('.close-news-details-modal-button');
 
-            // NEW: Search elements
-            const stockSearchInput = document.getElementById('stockSearchInput');
-            const searchResultsDiv = document.getElementById('searchResults');
-            const searchAnalysisButton = document.getElementById('searchAnalysisButton');
+            // 🚨 OLD: 검색 관련 요소 (이제 사용되지 않으므로 주석 처리 또는 삭제)
+            // const stockSearchInput = document.getElementById('stockSearchInput');
+            // const searchResultsDiv = document.getElementById('searchResults');
+            // const searchAnalysisButton = document.getElementById('searchAnalysisButton');
+
+            // NEW: 다른 주식 선택 드롭다운 요소
+            const otherStockSelect = document.getElementById('otherStockSelect');
 
 
             const explanations = {
@@ -624,9 +631,13 @@
                     myChart = null;
                 }
                 tickerChartGrid.innerHTML = '';
+                // 닫을 때 드롭다운 초기화 (선택 사항)
+                document.getElementById('stockSelect').value = '';
+                document.getElementById('otherStockSelect').value = '';
             });
 
-            // NEW: Debounce function for search input
+            // 🚨 OLD: 검색 입력 필드 관련 로직은 모두 제거
+            /*
             function debounce(func, delay) {
                 let timeout;
                 return function(...args) {
@@ -636,15 +647,14 @@
                 };
             }
 
-            // NEW: Event listener for search input
             stockSearchInput.addEventListener('input', debounce(async (event) => {
                 const query = event.target.value.trim();
-                searchResultsDiv.innerHTML = ''; // 이전 결과 지우기
-                searchResultsDiv.style.display = 'none'; // 결과 숨기기
-                searchAnalysisButton.style.display = 'none'; // 분석 버튼 숨기기
-                searchAnalysisButton.dataset.tickerToAnalyze = ''; // 분석할 티커 초기화
+                searchResultsDiv.innerHTML = '';
+                searchResultsDiv.style.display = 'none';
+                searchAnalysisButton.style.display = 'none';
+                searchAnalysisButton.dataset.tickerToAnalyze = '';
 
-                if (query.length < 2) { // 최소 2글자 이상 입력 시 검색
+                if (query.length < 2) {
                     return;
                 }
 
@@ -671,82 +681,98 @@
                         const div = document.createElement('div');
                         div.classList.add('autocomplete-item');
                         div.textContent = `${item.name} (${item.ticker})`;
-                        div.dataset.ticker = item.ticker; // 티커를 데이터 속성에 저장
-                        div.dataset.name = item.name; // 이름도 데이터 속성에 저장
+                        div.dataset.ticker = item.ticker;
+                        div.dataset.name = item.name;
                         div.addEventListener('click', () => {
-                            stockSearchInput.value = item.name; // 검색창에 기업명 표시
-                            searchResultsDiv.innerHTML = ''; // 결과 목록 지우기
-                            searchResultsDiv.style.display = 'none'; // 결과 숨기기
-                            
-                            // 선택된 티커를 분석 버튼에 저장하고 활성화
+                            stockSearchInput.value = item.name;
+                            searchResultsDiv.innerHTML = '';
+                            searchResultsDiv.style.display = 'none';
                             searchAnalysisButton.dataset.tickerToAnalyze = item.ticker;
                             searchAnalysisButton.style.display = 'inline-block'; 
-                            
-                            // 캐시된 이름 업데이트
                             cachedAnalysisData.allKnownTickerNames[item.ticker] = item.name;
                         });
                         searchResultsDiv.appendChild(div);
                     });
-                    searchResultsDiv.style.display = 'block'; // 결과 표시
+                    searchResultsDiv.style.display = 'block';
                 } catch (error) {
                     console.error('주식 검색 실패:', error);
                     searchResultsDiv.innerHTML = `<div class="autocomplete-item error">검색 중 오류 발생: ${error.message}</div>`;
                     searchResultsDiv.style.display = 'block';
                 }
-            }, 300)); // 300ms 디바운스 딜레이
+            }, 300));
 
-            // NEW: 검색 분석 버튼 클릭 이벤트 리스너
             searchAnalysisButton.addEventListener('click', () => {
                 const ticker = searchAnalysisButton.dataset.tickerToAnalyze;
                 if (ticker) {
-                    startAnalysis(ticker); // startAnalysis 함수에 티커 직접 전달
-                    // 검색 관련 UI 초기화
+                    startAnalysis(ticker);
                     stockSearchInput.value = '';
                     searchResultsDiv.innerHTML = '';
                     searchResultsDiv.style.display = 'none';
                     searchAnalysisButton.style.display = 'none';
                     searchAnalysisButton.dataset.tickerToAnalyze = '';
-                    // 포트폴리오 선택 드롭다운은 기본값으로 되돌림 (선택 사항)
                     document.getElementById('stockSelect').value = '';
                 } else {
                     showError('분석할 주식을 선택해주세요.');
                 }
             });
 
-            // NEW: 검색창 외 다른 곳 클릭 시 자동 완성 결과 숨기기
             document.addEventListener('click', (event) => {
-                if (!stockSearchInput.contains(event.target) && !searchResultsDiv.contains(event.target)) {
+                if (stockSearchInput && searchResultsDiv && !stockSearchInput.contains(event.target) && !searchResultsDiv.contains(event.target)) {
                     searchResultsDiv.style.display = 'none';
                 }
             });
+            */
 
 
             async function loadInitialData() {
                 const stockSelect = document.getElementById('stockSelect');
+                const otherStockSelect = document.getElementById('otherStockSelect');
+
                 try {
-                    const response = await fetch('/portfolio_summary');
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    // 1. 포트폴리오 주식 정보 로드
+                    const portfolioResponse = await fetch('/portfolio_summary');
+                    if (!portfolioResponse.ok) {
+                        throw new Error(`HTTP error! status: ${portfolioResponse.status}`);
                     }
-                    const data = await response.json();
+                    const portfolioData = await portfolioResponse.json();
 
                     stockSelect.innerHTML = '<option value="">-- 주식을 선택하세요 --</option>';
-                    data.stocks.forEach(stock => {
-                        const option = document.createElement('option');
-                        option.value = stock.ticker;
-                        option.textContent = stock.name;
-                        // NEW: is_analyzable 플래그를 data-analyzable 속성으로 저장
-                        option.dataset.analyzable = stock.is_analyzable; 
-                        stockSelect.appendChild(option);
-                        // 초기 로딩 시 포트폴리오 주식 이름 캐시
+                    portfolioData.stocks.forEach(stock => {
+                        // 🚨 NEW: is_analyzable이 true인 포트폴리오 주식만 드롭다운에 추가
+                        if (stock.is_analyzable) { 
+                            const option = document.createElement('option');
+                            option.value = stock.ticker;
+                            option.textContent = stock.name;
+                            option.dataset.analyzable = stock.is_analyzable; 
+                            stockSelect.appendChild(option);
+                        }
+                        // 초기 로딩 시 모든 포트폴리오 주식 이름 캐시 (분석 가능 여부와 무관하게)
                         cachedAnalysisData.allKnownTickerNames[stock.ticker] = stock.name;
                     });
 
-                    displayPortfolioOverview(data.stocks, data.total_portfolio_summary);
+                    displayPortfolioOverview(portfolioData.stocks, portfolioData.total_portfolio_summary);
+
+                    // 2. 분석 가능한 모든 기업 목록 로드 (새로운 드롭다운용)
+                    const analyzableResponse = await fetch('/analyzable_stocks');
+                    if (!analyzableResponse.ok) {
+                        throw new Error(`HTTP error! status: ${analyzableResponse.status}`);
+                    }
+                    const analyzableData = await analyzableResponse.json();
+
+                    otherStockSelect.innerHTML = '<option value="">-- 기업을 선택하세요 --</option>';
+                    analyzableData.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.ticker;
+                        option.textContent = `${item.name} (${item.ticker})`;
+                        otherStockSelect.appendChild(option);
+                        // 분석 가능한 기업 이름도 캐시
+                        cachedAnalysisData.allKnownTickerNames[item.ticker] = item.name;
+                    });
+
 
                 } catch (error) {
                     console.error('초기 데이터 로딩 실패:', error);
-                    showError('초기 포트폴리오 데이터를 로드할 수 없습니다. 서버가 실행 중인지 확인하세요: ' + error.message);
+                    showError('초기 포트폴리오 및 분석 가능 기업 데이터를 로드할 수 없습니다. 서버가 실행 중인지 확인하세요: ' + error.message);
                     portfolioOverviewDiv.innerHTML = '<p class="error">포트폴리오 정보를 로드하는 데 실패했습니다.</p>';
                 }
             }
@@ -921,31 +947,31 @@
                 errorMessageContainer.style.display = 'none';
             }
 
-            // startAnalysis 함수 수정: 옵션으로 티커를 받을 수 있게 함
-            window.startAnalysis = function(tickerToAnalyze = null) {
-                let ticker;
-                let isAnalyzable = true; // 검색된 주식의 경우 기본적으로 분석 가능하다고 가정
+            // startAnalysis 함수 수정: 포트폴리오 또는 다른 주식 드롭다운에서 선택된 티커를 처리
+            window.startAnalysis = function() {
+                const stockSelect = document.getElementById('stockSelect');
+                const otherStockSelect = document.getElementById('otherStockSelect');
 
-                if (tickerToAnalyze) { // 검색 기능을 통해 티커가 직접 전달된 경우
-                    ticker = tickerToAnalyze;
-                    // 검색 API는 이미 재무제표 기업만 반환하므로, 여기서 isAnalyzable 확인 불필요
-                } else { // 포트폴리오 드롭다운을 통해 선택된 경우
-                    const stockSelect = document.getElementById('stockSelect');
-                    ticker = stockSelect.value;
+                let tickerToAnalyze = null;
+                let isAnalyzable = true; // 기본적으로 true로 설정 (드롭다운으로 선택된 것은 분석 가능하다고 가정)
 
-                    if (!ticker) {
-                        showError('개별 주식 분석을 위해 주식을 선택해 주세요!');
-                        return;
-                    }
-
-                    // NEW: 선택된 포트폴리오 주식의 data-analyzable 플래그 확인
+                if (stockSelect.value) { // 포트폴리오 드롭다운에서 선택됨
+                    tickerToAnalyze = stockSelect.value;
                     const selectedOption = stockSelect.options[stockSelect.selectedIndex];
-                    isAnalyzable = selectedOption.dataset.analyzable === 'true'; // 문자열 'true'/'false'를 boolean으로 변환
+                    isAnalyzable = selectedOption.dataset.analyzable === 'true'; // 포트폴리오 주식의 분석 가능 여부 확인
+                } else if (otherStockSelect.value) { // 다른 주식 드롭다운에서 선택됨
+                    tickerToAnalyze = otherStockSelect.value;
+                    // otherStockSelect는 이미 analyzable한 기업만 포함하므로 isAnalyzable은 true 유지
+                }
 
-                    if (!isAnalyzable) {
-                        showError('이 기업은 재무제표 분석 데이터가 없어 전체 투자 브리핑을 제공할 수 없습니다. 포트폴리오 현황에서 주가 정보만 확인 가능합니다.');
-                        return; // 분석 요청을 보내지 않고 중단
-                    }
+                if (!tickerToAnalyze) {
+                    showError('분석할 주식을 선택하세요!');
+                    return;
+                }
+
+                if (!isAnalyzable) { // 포트폴리오에서 분석 불가능한 주식을 선택했을 경우
+                    showError('이 기업은 재무제표 분석 데이터가 없어 전체 투자 브리핑을 제공할 수 없습니다. 포트폴리오 현황에서 주가 정보만 확인 가능합니다.');
+                    return;
                 }
 
                 hideError();
@@ -963,7 +989,11 @@
                 loadingMessage.textContent = '분석 준비 중...';
                 loadingExplanation.textContent = explanations['분석 준비 중...'] || '';
 
-                socket.emit('start_analysis_request', { ticker: ticker });
+                // 분석 시작 요청 보내기 전에 드롭다운 선택 초기화
+                stockSelect.value = '';
+                otherStockSelect.value = '';
+
+                socket.emit('start_analysis_request', { ticker: tickerToAnalyze });
             }
 
             socket.on('status_update', function(data) {
@@ -1123,27 +1153,35 @@
             function displayResults(report, portfolioSummary) {
                 let html = '';
 
-                if (portfolioSummary) {
+                // 🚨 NEW: is_portfolio_holding 플래그를 확인하여 개별 보유 현황 섹션 표시 여부 결정
+                if (portfolioSummary && portfolioSummary.is_portfolio_holding) {
                     const stockName = portfolioSummary.name || portfolioSummary.ticker;
                     const marketType = getTickerMarketType(portfolioSummary.ticker);
                     const defaultDisplayCurrency = marketType === 'KR' ? 'KRW' : 'USD'; 
 
                     html += `<div class="report-section" style="border-bottom: 2px solid #007bff;">`;
                     html += `<h2>${stockName} (${portfolioSummary.ticker}) 개별 보유 현황</h2>`;
-                    if (portfolioSummary.message) {
-                        html += `<p class="error">${portfolioSummary.message}</p>`;
-                    } else {
-                        html += `<p><strong>구매 가격:</strong> ${formatCurrency(portfolioSummary.purchase_price, marketType, defaultDisplayCurrency)} (수량: ${portfolioSummary.quantity})</p>`;
-                        html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, defaultDisplayCurrency)}</p>`;
-                        
-                        let profitLossClass = getProfitLossClass(portfolioSummary.profit_loss_percentage);
+                    // portfolioSummary.message는 is_portfolio_holding이 false일 때만 설정되므로, 여기서는 불필요
+                    html += `<p><strong>구매 가격:</strong> ${formatCurrency(portfolioSummary.purchase_price, marketType, defaultDisplayCurrency)} (수량: ${portfolioSummary.quantity})</p>`;
+                    html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, defaultDisplayCurrency)}</p>`;
+                    
+                    let profitLossClass = getProfitLossClass(portfolioSummary.profit_loss_percentage);
 
-                        html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_per_share, marketType, defaultDisplayCurrency)}</span></p>`;
-                        html += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_total, marketType, defaultDisplayCurrency)}</span></p>`;
-                        html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_percentage, '', '', true)}</span></p>`;
-                    }
+                    html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_per_share, marketType, defaultDisplayCurrency)}</span></p>`;
+                    html += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_total, marketType, defaultDisplayCurrency)}</span></p>`;
+                    html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_percentage, '', '', true)}</span></p>`;
+                    html += `</div>`;
+                } else if (portfolioSummary && portfolioSummary.name && portfolioSummary.ticker) {
+                    // 보유하지 않은 주식이라도 현재 가격은 보여줄 수 있도록 (간략 정보)
+                    const stockName = portfolioSummary.name || portfolioSummary.ticker;
+                    const marketType = getTickerMarketType(portfolioSummary.ticker);
+                    html += `<div class="report-section" style="border-bottom: 1px dashed #eee;">`;
+                    html += `<h2>${stockName} (${portfolioSummary.ticker}) 현재 가격 정보</h2>`;
+                    html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
+                    html += `<p><em>이 주식은 포트폴리오에 보유하고 있지 않습니다.</em></p>`;
                     html += `</div>`;
                 }
+
 
                 if (report.report_title) {
                     html += `<h2>${report.report_title}</h2>`;
@@ -1238,12 +1276,13 @@
 
                         let basePrice = null;
 
-                        // 현재 분석 중인 티커이고, 구매 가격이 유효한 경우 사용
+                        // 현재 분석 중인 티커이고, 구매 가격이 유효하며 포트폴리오에 보유 중인 경우 구매 가격을 기준선으로 사용
                         if (cachedAnalysisData.analyzedStockPortfolioSummary && 
                             cachedAnalysisData.analyzedStockPortfolioSummary.ticker === ticker &&
                             cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== null &&
                             cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== 'N/A' &&
-                            cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== 0) {
+                            cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== 0 &&
+                            cachedAnalysisData.analyzedStockPortfolioSummary.is_portfolio_holding) { // 🚨 NEW: is_portfolio_holding 체크 추가
                             
                             basePrice = parseFloat(cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price);
                             console.log(`Using purchase price as base for ${ticker}: ${basePrice}`);
