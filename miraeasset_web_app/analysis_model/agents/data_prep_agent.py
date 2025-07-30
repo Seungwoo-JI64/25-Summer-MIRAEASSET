@@ -146,6 +146,6 @@ def run_data_prep(state: AnalysisState) -> Dict[str, Any]:
         "ticker": ticker,
         "company_description": company_description,
         "ko_company_description": ko_company_description,  # 국문 설명 추가
-        "financial_statements": financial_statements
+        "financial_health": financial_statements
     }
 

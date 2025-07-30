@@ -111,7 +111,7 @@ Now, generate the JSON object for `{entity_key}` based on all the instructions a
         print(f"  - ⚠️ [분석가 LLM] '{entity_key}' 분석 결과가 유효한 JSON이 아닙니다.")
         return None
 
-def _generate_briefing_summary(state: AnalysisState, entity_analysis: Dict) -> str | None:
+def _generate_briefing_summary(state: AnalysisState, entity_analysis: Dict, financial_health: str) -> str | None:
     """추가된 함수: '요약 LLM' - 전체 분석 내용을 요약하는 문단 생성"""
     target_name = state.get("company_name", "N/A")
     
@@ -133,6 +133,8 @@ You are a financial analyst summarizing a detailed report for a client. Your tas
 ```
 
 ## DATA TO SUMMARIZE
+** Target Company's Financial Health (Pre-analyzed):**
+{financial_health}
 **In-depth Entity Analysis (Pre-analyzed)**: 
 {json.dumps(entity_analysis, indent=2, ensure_ascii=False)}
 
@@ -150,7 +152,7 @@ Now, generate the summary JSON object based on the provided analysis.
         print("  - ⚠️ [요약 LLM] 응답이 유효한 JSON 형식이 아닙니다.")
         return None
 
-def _generate_strategy_suggestion(state: AnalysisState, entity_analysis: Dict) -> str | None:
+def _generate_strategy_suggestion(state: AnalysisState, entity_analysis: Dict, financial_health: str) -> str | None:
     """2단계: '전략가 LLM' - 최종 투자 전략 제안 문단 생성 (개인 투자자 관점으로 수정)"""
     target_name = state.get("company_name", "N/A")
     correlation_summary = state.get("market_analysis_result", {}).get("correlation_summary", [])
@@ -174,9 +176,11 @@ You are a top-tier securities analyst writing for a **personal investor** who is
 
 ## DATA FOR ANALYSIS
 **1. Target Company**: {target_name}
-**2. Long-term Correlation Analysis**: 
+**2. Target Company's Financial Health**: 
+{financial_health}
+**3. Long-term Correlation Analysis**: 
 {json.dumps(correlation_summary, indent=2, ensure_ascii=False)}
-**3. In-depth Entity Analysis (Pre-analyzed)**: 
+**4. In-depth Entity Analysis (Pre-analyzed)**: 
 {json.dumps(entity_analysis, indent=2, ensure_ascii=False)}
 
 ## TASK
@@ -199,7 +203,9 @@ def run_report_synthesizer(state: AnalysisState) -> Dict[str, Any]:
     print("\n--- ✍️ 최종 투자 브리핑 생성 에이전트 (개별 호출 구조) 실행 ---")
     
     target_name = state.get("company_name", "N/A")
-    
+    # State에서 financial_health 값을 가져옵니다.
+    financial_health = state.get("financial_health", "재무 건전성 보고서 정보가 없습니다.")
+
     # 1. 각 엔티티에 대해 개별적으로 LLM을 호출하여 분석을 수행합니다.
     full_entity_analysis = {}
     entities_to_analyze = _get_entities_to_analyze(state)
@@ -222,10 +228,10 @@ def run_report_synthesizer(state: AnalysisState) -> Dict[str, Any]:
 
     # 2. 분석된 모든 내용을 바탕으로 요약 및 최종 투자 전략을 각각 생성합니다.
     print("  - [2단계] 브리핑 요약 생성 중...")
-    briefing_summary = _generate_briefing_summary(state, full_entity_analysis)
+    briefing_summary = _generate_briefing_summary(state, full_entity_analysis, financial_health)
     
     print("  - [3단계] 최종 투자 전략 생성 중...")
-    strategy_suggestion = _generate_strategy_suggestion(state, full_entity_analysis)
+    strategy_suggestion = _generate_strategy_suggestion(state, full_entity_analysis, financial_health)
 
     # 4. 분석 결과를 종합하여 최종 리포트 객체를 만듭니다.
     final_report_structured = FinalReport(
