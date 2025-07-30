@@ -413,9 +413,38 @@
             margin-bottom: 10px; /* 요소들 간 세로 간격 */
         }
 
+        .top-header {
+            position: relative; /* 자식 요소의 absolute 위치 기준점 */
+            display: flex;
+            align-items: center; /* 수직 중앙 정렬 */
+            justify-content: flex-start; /* 자식 요소를 왼쪽부터 정렬 */
+            padding: 10px 40px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .top-header h2 {
+            position: absolute; /* 헤더 중앙에 절대 위치 */
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0; /* h2의 기본 마진 제거 */
+            font-size: 1.2em; /* 폰트 크기 조정 */
+            white-space: nowrap; /* 텍스트가 줄바꿈되지 않도록 */
+        }
+        .header-logo img {
+            height: 80px;
+            width: auto;
+        }
+
     </style>
 </head>
 <body>
+    <div class="top-header">
+        <a href="https://github.com/Seungwoo-JI64/25-Summer-MIRAEASSET/" target="_blank" class="header-logo">
+            <img src="https://velog.velcdn.com/images/persestitan/post/5ef6f63a-c279-465d-b65d-97ff39848f6c/image.jpeg" alt="깃허브 하이퍼링크">
+        </a>
+        <h2>제9회 2025 미래에셋증권 AI Festival - DATA TADA팀</h2>
+    </div>
     <div class="container">
         <h1>기업 투자 브리핑 생성기</h1>
 
@@ -472,16 +501,20 @@
             
             <div id="market-data-visualization-section">
                 <h2>시장 데이터 시각화</h2>
-                <p>그래프를 보고 싶은 종목이나 지표를 선택하세요 (복수 선택 가능):</p>
+                <p>그래프를 보고 싶은 종목이나 지표를 선택하세요. (복수 선택 가능)</p>
+                <p>상단은 단기(뉴스 발생 시간 전후), 하단은 장기(2년) 주가 변동을 보여줍니다.</p>
+
                 <div id="tickerChartGrid" class="ticker-chart-grid">
                     <!-- 티커 블록들이 여기에 동적으로 로드됩니다 -->
                 </div>
 
                 <div class="chart-container">
-                    <canvas id="priceChart"></canvas>
+                    <canvas id="shortTermPriceChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="longTermPriceChart"></canvas>
                 </div>
 
-                <!-- 상관관계 매트릭스 섹션 삭제됨 -->
             </div>
 
             <div id="results"></div>
@@ -525,10 +558,13 @@
 
             const marketDataVisualizationSection = document.getElementById('market-data-visualization-section');
             const tickerChartGrid = document.getElementById('tickerChartGrid');
-            const priceChartCanvas = document.getElementById('priceChart');
-            const priceChartCtx = priceChartCanvas ? priceChartCanvas.getContext('2d') : null;
 
-            let myChart = null;
+            const longTermPriceChartCanvas = document.getElementById('longTermPriceChart');
+            const longTermPriceChartCtx = longTermPriceChartCanvas ? longTermPriceChartCanvas.getContext('2d') : null;
+            let myLongTermChart = null;
+            const shortTermPriceChartCanvas = document.getElementById('shortTermPriceChart');
+            const shortTermPriceChartCtx = shortTermPriceChartCanvas ? shortTermPriceChartCanvas.getContext('2d') : null;
+            let myShortTermChart = null;
 
             const stockInfoModal = document.getElementById('stockInfoModal');
             const stockInfoContent = document.getElementById('stockInfoContent');
@@ -562,6 +598,7 @@
                 selectedNews: [],
                 selectedDomesticNews: [],
                 historicalPrices: {},
+                short_term_prices: {}, // 단기 데이터 캐시
                 newsEventMarkers: {}, 
                 allAnalyzedTickers: [], 
                 correlationMatrix: {}, // 상관관계 매트릭스는 이제 사용되지 않지만, 데이터 구조 일관성을 위해 유지
@@ -622,20 +659,7 @@
             });
 
 
-            closeAnalysisButton.addEventListener('click', function() {
-                analysisOutputContainer.style.display = 'none';
-                resultsDiv.innerHTML = '';
-                newsListDisplay.innerHTML = '<p>뉴스를 분석 중입니다...</p>';
-                marketDataVisualizationSection.style.display = 'none';
-                if (myChart) {
-                    myChart.destroy();
-                    myChart = null;
-                }
-                tickerChartGrid.innerHTML = '';
-                // 닫을 때 드롭다운 초기화 (선택 사항)
-                document.getElementById('stockSelect').value = '';
-                document.getElementById('otherStockSelect').value = '';
-            });
+
 
             // 🚨 OLD: 검색 입력 필드 관련 로직은 모두 제거
             /*
@@ -948,55 +972,7 @@
                 errorMessageContainer.style.display = 'none';
             }
 
-            // startAnalysis 함수 수정: 포트폴리오 또는 다른 주식 드롭다운에서 선택된 티커를 처리
-            window.startAnalysis = function() {
-                const stockSelect = document.getElementById('stockSelect');
-                const otherStockSelect = document.getElementById('otherStockSelect');
-
-                let tickerToAnalyze = null;
-                let isAnalyzable = true; // 기본적으로 true로 설정 (드롭다운으로 선택된 것은 분석 가능하다고 가정)
-
-                if (stockSelect.value) { // 포트폴리오 드롭다운에서 선택됨
-                    tickerToAnalyze = stockSelect.value;
-                    const selectedOption = stockSelect.options[stockSelect.selectedIndex];
-                    isAnalyzable = selectedOption.dataset.analyzable === 'true'; // 포트폴리오 주식의 분석 가능 여부 확인
-                } else if (otherStockSelect.value) { // 다른 주식 드롭다운에서 선택됨
-                    tickerToAnalyze = otherStockSelect.value;
-                    // otherStockSelect는 이미 analyzable한 기업만 포함하므로 isAnalyzable은 true 유지
-                }
-
-                if (!tickerToAnalyze) {
-                    showError('분석할 주식을 선택하세요!');
-                    return;
-                }
-
-                if (!isAnalyzable) { // 포트폴리오에서 분석 불가능한 주식을 선택했을 경우
-                    showError('이 기업은 재무제표 분석 데이터가 없어 전체 투자 브리핑을 제공할 수 없습니다. 포트폴리오 현황에서 주가 정보만 확인 가능합니다.');
-                    return;
-                }
-
-                hideError();
-                resultsDiv.innerHTML = '';
-                newsListDisplay.innerHTML = '<p>뉴스를 분석 중입니다...</p>';
-                analysisOutputContainer.style.display = 'none';
-                marketDataVisualizationSection.style.display = 'none';
-                if (myChart) {
-                    myChart.destroy();
-                    myChart = null;
-                }
-                tickerChartGrid.innerHTML = '';
-
-                loadingDiv.style.display = 'flex';
-                loadingMessage.textContent = '분석 준비 중...';
-                loadingExplanation.textContent = explanations['분석 준비 중...'] || '';
-
-                // 분석 시작 요청 보내기 전에 드롭다운 선택 초기화
-                stockSelect.value = '';
-                otherStockSelect.value = '';
-
-                socket.emit('start_analysis_request', { ticker: tickerToAnalyze });
-            }
-
+            
             socket.on('status_update', function(data) {
                 loadingMessage.textContent = data.message;
                 loadingExplanation.textContent = explanations[data.message] || '';
@@ -1009,33 +985,34 @@
 
             socket.on('analysis_complete', async function(data) {
                 console.log("🔥 Analysis Complete Data Received:", data);
-
+                
                 loadingDiv.style.display = 'none';
                 loadingMessage.textContent = '분석 완료!';
                 loadingExplanation.textContent = '';
-
+                
                 cachedAnalysisData.selectedNews = data.selected_news || [];
                 cachedAnalysisData.selectedDomesticNews = data.selected_domestic_news || [];
                 cachedAnalysisData.historicalPrices = data.historical_prices || {};
+                cachedAnalysisData.short_term_prices = data.short_term_prices || {}; // 단기 데이터 캐시
                 cachedAnalysisData.newsEventMarkers = data.news_event_markers || {};
                 cachedAnalysisData.allAnalyzedTickers = data.all_analyzed_tickers || [];
                 cachedAnalysisData.correlationMatrix = data.correlation_matrix || {}; 
                 cachedAnalysisData.analyzedStockPortfolioSummary = data.portfolio_summary || null; 
                 cachedAnalysisData.ko_company_description = data.ko_company_description || "기업 설명이 없습니다.";
-
+                
                 // 현재 분석된 주식의 이름을 캐시에 추가 (만약 포트폴리오에 없던 주식이라도)
                 if (cachedAnalysisData.analyzedStockPortfolioSummary && cachedAnalysisData.analyzedStockPortfolioSummary.ticker) {
                     cachedAnalysisData.allKnownTickerNames[cachedAnalysisData.analyzedStockPortfolioSummary.ticker] = cachedAnalysisData.analyzedStockPortfolioSummary.name;
                 }
-
+                
                 // allAnalyzedTickers에 있는 모든 티커의 이름을 확인하고, 없으면 fetch하여 캐시에 추가
                 const nameFetchPromises = [];
                 for (const ticker of cachedAnalysisData.allAnalyzedTickers) {
                     if (!cachedAnalysisData.allKnownTickerNames[ticker]) {
                         nameFetchPromises.push(
                             fetch(`/stock_info/${ticker}`)
-                                .then(response => response.json())
-                                .then(infoData => {
+                            .then(response => response.json())
+                            .then(infoData => {
                                     cachedAnalysisData.allKnownTickerNames[ticker] = infoData.name || ticker; 
                                 })
                                 .catch(error => {
@@ -1046,24 +1023,24 @@
                     }
                 }
                 await Promise.all(nameFetchPromises); 
-
+                
                 console.log("Cached Historical Prices:", cachedAnalysisData.historicalPrices);
                 console.log("Cached News Event Markers:", cachedAnalysisData.newsEventMarkers);
                 console.log("Cached All Analyzed Tickes:", cachedAnalysisData.allAnalyzedTickers);
                 console.log("Cached Correlation Matrix:", cachedAnalysisData.correlationMatrix);
                 console.log("Analyzed Stock Portfolio Summary:", cachedAnalysisData.analyzedStockPortfolioSummary);
                 console.log("All known ticker names:", cachedAnalysisData.allKnownTickerNames);
-
-
+                
+                
                 analysisOutputContainer.style.display = 'block';
                 newsTypeSelect.value = 'selected_news';
                 displayNewsSummaries(cachedAnalysisData.selectedNews);
-
+                
                 displayResults(data.report, data.portfolio_summary,  cachedAnalysisData.ko_company_description);
                 
                 marketDataVisualizationSection.style.display = 'block';
                 populateTickerChartBlocks(cachedAnalysisData.allAnalyzedTickers); 
-
+                
                 if (cachedAnalysisData.allAnalyzedTickers.length > 0) {
                     setTimeout(() => {
                         const initialTicker = data.portfolio_summary?.ticker || cachedAnalysisData.allAnalyzedTickers[0];
@@ -1081,13 +1058,13 @@
                     }, 500); 
                 }
             });
-
+            
             function displayNewsSummaries(newsArray) {
                 let newsHtml = '';
                 if (newsArray && newsArray.length > 0) {
                     newsArray.forEach(news => {
                         newsHtml += `<div class="news-item">`;
-                        const newsUrl = news.url || '#';
+                            const newsUrl = news.url || '#';
                         newsHtml += `<h4><a href="${newsUrl}" target="_blank">${news.title}</a></h4>`;
                         newsHtml += `<p>${news.summary}</p>`;
                         const newsDate = news.published_date || news.publish_date;
@@ -1096,8 +1073,8 @@
                         }
                         if (news.related_metrics && news.related_metrics.length > 0) {
                             newsHtml += `<div class="related-tickers"><strong>연관 기업/지표:</strong> `;
-                            news.related_metrics.forEach(ticker => {
-                                // 연관 기업/지표도 이름으로 표시
+                                news.related_metrics.forEach(ticker => {
+                                    // 연관 기업/지표도 이름으로 표시
                                 const displayName = cachedAnalysisData.allKnownTickerNames[ticker] || ticker;
                                 newsHtml += `<span onclick="showStockInfo('${ticker}')">${displayName}</span>`;
                             });
@@ -1110,7 +1087,7 @@
                 }
                 newsListDisplay.innerHTML = newsHtml;
             }
-
+            
             window.showStockInfo = async function(ticker) {
                 console.log("showStockInfo called for ticker:", ticker);
                 stockInfoContent.innerHTML = '<p>정보를 로드 중입니다...</p>';
@@ -1121,7 +1098,7 @@
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     const data = await response.json();
-                
+                    
                     if (data.error) {
                         stockInfoContent.innerHTML = `<p class="error">정보 로드 실패: ${data.error}</p>`;
                     } else {
@@ -1136,49 +1113,49 @@
                     stockInfoContent.innerHTML = `<p class="error">정보를 로드할 수 없습니다: ${error.message}</p>`;
                 }
             
-
-            /*    try {
+                
+                /*    try {
                     const response = await fetch(`/stock_info/${ticker}`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    const data = await response.json();
-
-                    if (data.error) {
-                        stockInfoContent.innerHTML = `<p class="error">주식 정보 로드 실패: ${data.error}</p>`;
-                    } else {
-                        // 이름 캐시 업데이트
-                        cachedAnalysisData.allKnownTickerNames[ticker] = data.name;
-
-                        let infoHtml = `<h3>${data.name} (${data.ticker})</h3>`;
-                        const marketType = getTickerMarketType(data.ticker);
-
-                        infoHtml += `<p><strong>현재 가격:</strong> ${formatCurrency(data.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
+                        }
+                        const data = await response.json();
                         
-                        if (data.purchase_price !== null && data.purchase_price !== 'N/A' && data.purchase_price !== undefined) {
+                        if (data.error) {
+                            stockInfoContent.innerHTML = `<p class="error">주식 정보 로드 실패: ${data.error}</p>`;
+                            } else {
+                                // 이름 캐시 업데이트
+                            cachedAnalysisData.allKnownTickerNames[ticker] = data.name;
+                            
+                            let infoHtml = `<h3>${data.name} (${data.ticker})</h3>`;
+                            const marketType = getTickerMarketType(data.ticker);
+                            
+                            infoHtml += `<p><strong>현재 가격:</strong> ${formatCurrency(data.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
+                            
+                            if (data.purchase_price !== null && data.purchase_price !== 'N/A' && data.purchase_price !== undefined) {
                             let profitLossClass = getProfitLossClass(data.profit_loss_percentage);
                             infoHtml += `<p><strong>구매 가격:</strong> ${formatCurrency(data.purchase_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')} (수량: ${data.quantity})</p>`;
                             infoHtml += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(data.profit_loss_per_share, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</span></p>`;
                             infoHtml += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(data.profit_loss_total, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</span></p>`;
                             infoHtml += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(data.profit_loss_percentage, '', '', true)}</span></p>`;
-                        } else {
+                            } else {
                             infoHtml += `<p><em>이 주식은 포트폴리오에 없거나 구매 정보가 없습니다.</em></p>`;
-                        }
-                        stockInfoContent.innerHTML = infoHtml;
                     }
-                } catch (error) {
-                    console.error('주식 정보 로딩 실패:', error);
-                    stockInfoContent.innerHTML = `<p class="error">주식 정보를 로드할 수 없습니다: ${error.message}</p>`;
-                }
-                    */
-            }
-            
+                        stockInfoContent.innerHTML = infoHtml;
+                        }
+                        } catch (error) {
+                            console.error('주식 정보 로딩 실패:', error);
+                            stockInfoContent.innerHTML = `<p class="error">주식 정보를 로드할 수 없습니다: ${error.message}</p>`;
+                            }
+                            */
+                        }
+                        
 
-
-            function displayResults(report, portfolioSummary, ko_company_description) {
-                let html = '';
-                const stockName = portfolioSummary.name || portfolioSummary.ticker;
-                html += `<div class="report-section" style="border-bottom: 2px solid #007bff;">`;
+                        
+                        function displayResults(report, portfolioSummary, ko_company_description) {
+                            let html = '';
+                            const stockName = portfolioSummary.name || portfolioSummary.ticker;
+                            html += `<div class="report-section" style="border-bottom: 2px solid #007bff;">`;
                 html += `<h2>${stockName} (${portfolioSummary.ticker}) 기업 개요</h2>`;
                 html += `<p>${ko_company_description}</p>`; // 받아온 국문 설명을 여기에 표시
                 html += `</div>`;
@@ -1188,52 +1165,52 @@
                     const stockName = portfolioSummary.name || portfolioSummary.ticker;
                     const marketType = getTickerMarketType(portfolioSummary.ticker);
                     const defaultDisplayCurrency = marketType === 'KR' ? 'KRW' : 'USD'; 
-
+                    
                     html += `<div class="report-section" style="border-bottom: 2px solid #007bff;">`;
-                    html += `<h2>${stockName} (${portfolioSummary.ticker}) 개별 보유 현황</h2>`;
-                    // portfolioSummary.message는 is_portfolio_holding이 false일 때만 설정되므로, 여기서는 불필요
-                    html += `<p><strong>구매 가격:</strong> ${formatCurrency(portfolioSummary.purchase_price, marketType, defaultDisplayCurrency)} (수량: ${portfolioSummary.quantity})</p>`;
-                    html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, defaultDisplayCurrency)}</p>`;
+                        html += `<h2>${stockName} (${portfolioSummary.ticker}) 개별 보유 현황</h2>`;
+                        // portfolioSummary.message는 is_portfolio_holding이 false일 때만 설정되므로, 여기서는 불필요
+                        html += `<p><strong>구매 가격:</strong> ${formatCurrency(portfolioSummary.purchase_price, marketType, defaultDisplayCurrency)} (수량: ${portfolioSummary.quantity})</p>`;
+                        html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, defaultDisplayCurrency)}</p>`;
+                        
+                        
+                        
+                        let profitLossClass = getProfitLossClass(portfolioSummary.profit_loss_percentage);
+                        
+                        html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_per_share, marketType, defaultDisplayCurrency)}</span></p>`;
+                        html += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_total, marketType, defaultDisplayCurrency)}</span></p>`;
+                        html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_percentage, '', '', true)}</span></p>`;
+                        html += `</div>`;
+                        } else if (portfolioSummary && portfolioSummary.name && portfolioSummary.ticker) {
+                            const stockName = portfolioSummary.name || portfolioSummary.ticker;
+                            const marketType = getTickerMarketType(portfolioSummary.ticker);
+                            html += `<div class="report-section" style="border-bottom: 1px dashed #eee;">`;
+                                // 보유하지 않은 주식이라도 현재 가격은 보여줄 수 있도록 (간략 정보)
+                                html += `<h2>${stockName} (${portfolioSummary.ticker}) 현재 가격 정보</h2>`;
+                                html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
+                                html += `<p><em>이 주식은 포트폴리오에 보유하고 있지 않습니다.</em></p>`;
+                                html += `</div>`;
+                                
+                                }*/
+                               
 
-
-    
-                    let profitLossClass = getProfitLossClass(portfolioSummary.profit_loss_percentage);
-
-                    html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_per_share, marketType, defaultDisplayCurrency)}</span></p>`;
-                    html += `<p><strong>총 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_total, marketType, defaultDisplayCurrency)}</span></p>`;
-                    html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_percentage, '', '', true)}</span></p>`;
-                    html += `</div>`;
-                } else if (portfolioSummary && portfolioSummary.name && portfolioSummary.ticker) {
-                    const stockName = portfolioSummary.name || portfolioSummary.ticker;
-                    const marketType = getTickerMarketType(portfolioSummary.ticker);
-                    html += `<div class="report-section" style="border-bottom: 1px dashed #eee;">`;
-                    // 보유하지 않은 주식이라도 현재 가격은 보여줄 수 있도록 (간략 정보)
-                    html += `<h2>${stockName} (${portfolioSummary.ticker}) 현재 가격 정보</h2>`;
-                    html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
-                    html += `<p><em>이 주식은 포트폴리오에 보유하고 있지 않습니다.</em></p>`;
-                    html += `</div>`;
-
-                }*/
-
-
-                if (report.report_title) {
+                               if (report.report_title) {
                     html += `<h2>${report.report_title}</h2>`;
                 }
-
+                
                 if (report.briefing_summary) {
                     html += `<div class="report-section">`;
-                    html += `<h3>요약</h3>`;
-                    html += `<p>${report.briefing_summary}</p>`;
-                    html += `</div>`;
-                }
-
-                if (report.news_analysis && report.news_analysis.entity_analysis) {
-                    html += `<div class="report-section">`;
-                    html += `<h3>뉴스 및 시장 분석</h3>`;
-                    for (const entityKey in report.news_analysis.entity_analysis) {
-                        const entity = report.news_analysis.entity_analysis[entityKey];
+                        html += `<h3>요약</h3>`;
+                        html += `<p>${report.briefing_summary}</p>`;
+                        html += `</div>`;
+                    }
+                    
+                    if (report.news_analysis && report.news_analysis.entity_analysis) {
+                        html += `<div class="report-section">`;
+                            html += `<h3>뉴스 및 시장 분석</h3>`;
+                            for (const entityKey in report.news_analysis.entity_analysis) {
+                                const entity = report.news_analysis.entity_analysis[entityKey];
                         html += `<div class="entity-card">`;
-                        html += `<h4>${entityKey}</h4>`;
+                            html += `<h4>${entityKey}</h4>`;
                         if (entity.내용) {
                             html += `<p><strong>내용:</strong> ${entity.내용}</p>`;
                         }
@@ -1244,25 +1221,25 @@
                     }
                     html += `</div>`;
                 }
-
+                
                 if (report.strategy_suggestion) {
                     html += `<div class="report-section">`;
                     html += `<h3>투자 전략 제안</h3>`;
                     html += `<p>${report.strategy_suggestion}</p>`;
                     html += `</div>`;
                 }
-
+                
                 resultsDiv.innerHTML = html;
             }
-
-
+            
+            
             function populateTickerChartBlocks(allTickers) {
                 tickerChartGrid.innerHTML = '';
                 if (!allTickers || allTickers.length === 0) {
                     tickerChartGrid.innerHTML = '<p>시각화할 관련 종목/지표가 없습니다.</p>';
                     return;
                 }
-
+                
                 // "모든 종목/지표" 블록 생성 (여전히 티커 목록을 데이터셋에 저장)
                 const allOptionBlock = document.createElement('div');
                 allOptionBlock.classList.add('ticker-chart-block');
@@ -1270,7 +1247,7 @@
                 allOptionBlock.dataset.tickers = allTickers.join(',');
                 allOptionBlock.addEventListener('click', handleTickerChartBlockClick);
                 tickerChartGrid.appendChild(allOptionBlock);
-
+                
                 // 개별 티커 블록 생성 (기업 이름 표시, 실제 티커는 data-tickers에 저장)
                 allTickers.forEach(ticker => {
                     const block = document.createElement('div');
@@ -1284,239 +1261,164 @@
                 console.log("Ticker chart blocks populated (with company names).");
             }
 
-            async function handleTickerChartBlockClick(event) {
+            function handleTickerChartBlockClick(event) {
                 console.log("Ticker block clicked:", event.target.textContent);
                 document.querySelectorAll('.ticker-chart-block').forEach(b => b.classList.remove('active'));
                 event.target.classList.add('active');
-
-                // data-tickers 속성에서 실제 티커(들)을 가져옴
-                const selectedTickersStr = event.target.dataset.tickers;
-                const selectedTickers = selectedTickersStr.split(',');
+                
+                const selectedTickers = event.target.dataset.tickers.split(',');
                 console.log("Selected tickers for chart:", selectedTickers);
 
-                const chartDatasets = [];
-                const chartAnnotations = [];
-                let latestDate = null;
-
-                // 색상 인덱스 초기화: 클릭할 때마다 차트의 라인 색상이 팔레트의 첫 번째부터 시작하도록
-                currentColorIndex = 0; 
-
-                selectedTickers.forEach(ticker => {
+                // 수정된 부분: 이 두 함수를 호출하는 것 외에 다른 모든 코드를 제거합니다.
+                updateLongTermChart(selectedTickers);
+                updateShortTermChart(selectedTickers);
+            }
+            
+            
+            // 장기 차트 업데이트 함수 
+            function updateLongTermChart(tickers) {
+                const datasets = [];
+                const annotations = [];
+                currentColorIndex = 0;
+                
+                tickers.forEach(ticker => {
                     const data = cachedAnalysisData.historicalPrices[ticker];
                     if (data && data.length > 0) {
-                        // 날짜 오름차순 정렬 (혹시 모를 경우를 대비)
                         data.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                        let basePrice = null;
-
-                        // 현재 분석 중인 티커이고, 구매 가격이 유효하며 포트폴리오에 보유 중인 경우 구매 가격을 기준선으로 사용
-                        if (cachedAnalysisData.analyzedStockPortfolioSummary && 
-                            cachedAnalysisData.analyzedStockPortfolioSummary.ticker === ticker &&
-                            cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== null &&
-                            cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== 'N/A' &&
-                            cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price !== 0 &&
-                            cachedAnalysisData.analyzedStockPortfolioSummary.is_portfolio_holding) { // 🚨 NEW: is_portfolio_holding 체크 추가
-                            
+                        let basePrice = (data[0].close !== null && data[0].close !== 0) ? parseFloat(data[0].close) : null;
+                        if (cachedAnalysisData.analyzedStockPortfolioSummary?.ticker === ticker && cachedAnalysisData.analyzedStockPortfolioSummary?.purchase_price > 0 && cachedAnalysisData.analyzedStockPortfolioSummary?.is_portfolio_holding) {
                             basePrice = parseFloat(cachedAnalysisData.analyzedStockPortfolioSummary.purchase_price);
-                            console.log(`Using purchase price as base for ${ticker}: ${basePrice}`);
-
-                        } else if (data[0].close !== null && data[0].close !== 0) { 
-                            // 그렇지 않다면, 첫 번째 역사적 종가를 기준 가격으로 사용
-                            basePrice = parseFloat(data[0].close);
-                            console.log(`Using first historical price as base for ${ticker}: ${basePrice}`);
-                        } else {
-                            console.warn(`Could not determine a valid base price for ${ticker}. Skipping chart data.`);
-                            return; 
                         }
-                        
-                        // 백분율 변화 계산
-                        const datasetData = data.map(item => {
-                            let percentageChange = null;
-                            if (item.close !== null && basePrice !== null && basePrice !== 0) {
-                                percentageChange = ((parseFloat(item.close) - basePrice) / basePrice) * 100;
-                            }
-                            return { x: item.date, y: percentageChange };
-                        }).filter(item => item.y !== null); 
-
+                        if (basePrice === null) return;
+                        const datasetData = data.map(item => ({ x: item.date, y: ((parseFloat(item.close) - basePrice) / basePrice) * 100 })).filter(item => !isNaN(item.y));
                         if (datasetData.length > 0) {
-                             // 차트 레이블도 기업 이름으로 표시
-                             const displayName = cachedAnalysisData.allKnownTickerNames[ticker] || ticker;
-                             chartDatasets.push({
-                                label: `${displayName} (% 변화)`, 
-                                data: datasetData,
-                                borderColor: getNextColor(), // ⚠️ 변경: 팔레트 색상 사용
-                                tension: 0.1,
-                                fill: false,
-                                pointRadius: 0
-                            });
+                            const displayName = cachedAnalysisData.allKnownTickerNames[ticker] || ticker;
+                            datasets.push({ label: `${displayName} (% 변화)`, data: datasetData, borderColor: getNextColor(), tension: 0.1, fill: false, pointRadius: 0 });
                         }
-                    } else {
-                        console.warn(`No historical data found for ticker: ${ticker}`);
                     }
-                    
-                    const newsForTicker = cachedAnalysisData.newsEventMarkers[ticker]; 
+                    // ... (기존의 뉴스 마커(annotation) 생성 로직과 동일) ...
+                    const newsForTicker = cachedAnalysisData.newsEventMarkers[ticker];
                     if (newsForTicker) {
-                        // 날짜별로 뉴스들을 순회하며 Annotation 생성
                         Object.keys(newsForTicker).sort().forEach(date => {
-                            const newsItemsOnDate = newsForTicker[date]; 
+                            const newsItemsOnDate = newsForTicker[date];
                             if (newsItemsOnDate && newsItemsOnDate.length > 0) {
-                                chartAnnotations.push({
-                                    type: 'line',
-                                    mode: 'vertical',
-                                    scaleID: 'x',
-                                    value: date,
-                                    borderColor: 'rgba(255, 99, 132, 0.7)',
-                                    borderWidth: 2,
-                                    label: {
-                                        content: new Date(date).toLocaleDateString(), 
-                                        enabled: true,
-                                        position: 'top',
-                                        font: { size: 8, weight: 'bold' },
-                                        color: '#333', 
-                                        backgroundColor: 'rgba(255, 255, 255, 0.8)', 
-                                        yAdjust: -10,
-                                        padding: 3,
-                                        borderRadius: 3
-                                    },
-                                    onClick: (context) => {
-                                        console.log(`Annotation clicked for date ${date}, ticker ${ticker}. Showing news details...`);
-                                        showNewsDetailsModal(ticker, date, newsItemsOnDate); 
-                                    }
+                                annotations.push({
+                                    type: 'line', mode: 'vertical', scaleID: 'x', value: date, borderColor: 'rgba(255, 99, 132, 0.7)', borderWidth: 2,
+                                    label: { content: new Date(date).toLocaleDateString(), enabled: true, position: 'top', font: { size: 8 }, yAdjust: -10 },
+                                    onClick: () => showNewsDetailsModal(ticker, date, newsItemsOnDate)
                                 });
                             }
                         });
                     }
                 });
 
-                // ⚠️ 추가: 0%를 나타내는 가로선 Annotation
-                chartAnnotations.push({
-                    type: 'line',
-                    mode: 'horizontal',
-                    scaleID: 'y',
-                    value: 0, // y축 0 위치에 라인
-                    borderColor: 'black', // 검은색
-                    borderWidth: 2,       // 두께
-                    label: {
-                        content: '0%', // 라인에 표시할 텍스트
-                        enabled: true,
-                        position: 'end', // 라벨 위치 (선 끝)
-                        font: { size: 10, weight: 'bold' },
-                        color: 'black',
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                        yAdjust: -5,
-                        padding: 3,
-                        borderRadius: 3
-                    }
-                });
-
-                console.log("Chart Datasets prepared:", chartDatasets);
-                console.log("Chart Annotations prepared:", chartAnnotations);
-                console.log("Latest Date for chart:", latestDate);
-
-                if (priceChartCtx) {
-                    renderPriceChart(chartDatasets, chartAnnotations, latestDate);
-                } else {
-                    console.error("Canvas context for priceChart is null. Cannot render chart.");
-                }
+                annotations.push({ type: 'line', mode: 'horizontal', scaleID: 'y', value: 0, borderColor: 'black', borderWidth: 2});
+                renderPriceChart(myLongTermChart, longTermPriceChartCtx, datasets, annotations, '장기 주가 추이 (기준가 대비 %)');
             }
-
-            // getRandomColor 함수는 더 이상 사용되지 않으므로 삭제하거나 주석 처리
-            // function getRandomColor() {
-            //     const r = Math.floor(Math.random() * 200);
-            //     const g = Math.floor(Math.random() * 200);
-            //     b = Math.floor(Math.random() * 200);
-            //     return `rgb(${r},${g},${b})`;
-            // }
-
-            function renderPriceChart(datasets, annotations, latestDate) {
-                console.log("Attempting to render chart...");
-                if (myChart) {
-                    myChart.destroy();
-                    myChart = null;
-                    console.log("Previous chart destroyed and variable reset.");
-                }
-
-                let minDateForView = null;
-                if (latestDate) {
-                    const latestDateTime = new Date(latestDate);
-                    const threeMonthsAgo = new Date(latestDateTime);
-                    threeMonthsAgo.setMonth(latestDateTime.getMonth() - 3);
-                    minDateForView = threeMonthsAgo.toISOString().split('T')[0];
-                    console.log("Chart view range: from", minDateForView, "to", latestDate);
-                }
-
-                myChart = new Chart(priceChartCtx, {
-                    type: 'line',
-                    data: {
-                        datasets: datasets
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: '선택된 종목/지표 주가 추이 (기준 가격 대비 백분율 변화)' // 타이틀 변경
-                            },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                position: 'nearest',
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        if (context.parsed.y !== null) {
-                                            label += context.parsed.y.toFixed(2) + '%'; 
-                                        }
-                                        return label;
-                                    }
-                                }
-                            },
-                            annotation: {
-                                annotations: annotations
-                            }
-                        },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: {
-                                    unit: 'month',
-                                    tooltipFormat: 'yyyy-MM-dd',
-                                    displayFormats: {
-                                        day: 'yyyy-MM-dd',
-                                        month: 'yyyy-MM'
-                                    }
-                                },
-                                title: {
-                                    display: true,
-                                    text: '날짜'
-                                },
-                                min: minDateForView
-                            },
-                            y: {
-                                beginAtZero: false, 
-                                title: {
-                                    display: true,
-                                    text: '가격 변화율 (%)' 
-                                },
-                                ticks: {
-                                    callback: function(value, index, values) {
-                                        return value + '%'; 
-                                    }
-                                }
-                            }
+            
+            // 단기 차트 업데이트 함수
+            function updateShortTermChart(tickers) {
+                const datasets = [];
+                currentColorIndex = 0; // 색상 팔레트 초기화
+                
+                tickers.forEach(ticker => {
+                    const data = cachedAnalysisData.short_term_prices[ticker];
+                    if (data && data.length > 0) {
+                        // 단기 데이터는 첫 번째 값을 기준으로 변동률 계산
+                        const basePrice = parseFloat(data[0].close);
+                        if (basePrice > 0) {
+                            const datasetData = data.map(item => ({ x: item.date, y: ((parseFloat(item.close) - basePrice) / basePrice) * 100 }));
+                            const displayName = cachedAnalysisData.allKnownTickerNames[ticker] || ticker;
+                            datasets.push({ label: `${displayName} (% 변화)`, data: datasetData, borderColor: getNextColor(), tension: 0.1, fill: false, pointRadius: 1 });
                         }
                     }
                 });
-                console.log("Chart rendered successfully. myChart instance:", myChart);
+                
+                const annotations = [{ type: 'line', mode: 'horizontal', scaleID: 'y', value: 0, borderColor: 'black', borderWidth: 2}];
+                renderPriceChart(myShortTermChart, shortTermPriceChartCtx, datasets, annotations, '단기 주가 추이 (뉴스 기간 기준 %)');
             }
+            
+            
+            function renderPriceChart(chartInstance, context, datasets, annotations, titleText) {
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+                if (!context) return;
+
+                const newChart = new Chart(context, {
+                    type: 'line',
+                    data: { datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: titleText },
+                            tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => `${ctx.dataset.label || ''}: ${ctx.parsed.y.toFixed(2)}%` } },
+                            annotation: { annotations: annotations }
+                        },
+                        scales: {
+                            x: { type: 'time', time: { unit: 'day', tooltipFormat: 'yyyy-MM-dd' } },
+                            y: { title: { display: true, text: '가격 변화율 (%)' }, ticks: { callback: value => value + '%' } }
+                        }
+                    }
+                });
+
+                // 수정된 부분: myChart 대신 올바른 변수에 할당합니다.
+                if (context === longTermPriceChartCtx) {
+                    myLongTermChart = newChart;
+                } else if (context === shortTermPriceChartCtx) {
+                    myShortTermChart = newChart;
+                }
+            }
+
+            function destroyCharts() {
+                if (myLongTermChart) { myLongTermChart.destroy(); myLongTermChart = null; }
+                if (myShortTermChart) { myShortTermChart.destroy(); myShortTermChart = null; }
+            }
+
+            closeAnalysisButton.addEventListener('click', function() {
+                analysisOutputContainer.style.display = 'none';
+                resultsDiv.innerHTML = '';
+                newsListDisplay.innerHTML = '<p>뉴스를 분석 중입니다...</p>';
+                marketDataVisualizationSection.style.display = 'none';
+                tickerChartGrid.innerHTML = '';
+                document.getElementById('stockSelect').value = '';
+                document.getElementById('otherStockSelect').value = '';
+                destroyCharts(); // 수정된 부분: myChart 관련 코드를 제거하고 이 함수만 호출
+            });
+
+            // startAnalysis 함수 수정: 포트폴리오 또는 다른 주식 드롭다운에서 선택된 티커를 처리
+            window.startAnalysis = function() {
+                const stockSelect = document.getElementById('stockSelect');
+                const otherStockSelect = document.getElementById('otherStockSelect');
+            
+                let tickerToAnalyze = stockSelect.value || otherStockSelect.value;
+            
+                if (!tickerToAnalyze) {
+                    showError('분석할 주식을 선택하세요!');
+                    return;
+                }
+            
+                hideError();
+                destroyCharts(); // 수정된 부분: myChart 관련 코드를 모두 제거하고 이 함수만 남김
+                
+                resultsDiv.innerHTML = '';
+                newsListDisplay.innerHTML = '<p>뉴스를 분석 중입니다...</p>';
+                analysisOutputContainer.style.display = 'none';
+                marketDataVisualizationSection.style.display = 'none';
+                tickerChartGrid.innerHTML = '';
+            
+                loadingDiv.style.display = 'flex';
+                loadingMessage.textContent = '분석 준비 중...';
+                loadingExplanation.textContent = explanations['분석 준비 중...'] || '';
+            
+                stockSelect.value = '';
+                otherStockSelect.value = '';
+            
+                socket.emit('start_analysis_request', { ticker: tickerToAnalyze });
+            }
+            
+            
         }); // DOMContentLoaded 끝
     </script>
 </body>

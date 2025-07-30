@@ -587,6 +587,7 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
             
             # 새롭게 추가된 데이터 필드를 추출
             historical_prices = current_state.get("historical_prices", {})
+            short_term_prices = current_state.get("short_term_prices", {}) # 단기 데이터 가져오기
             news_event_markers = current_state.get("news_event_markers", {})
             all_analyzed_tickers = current_state.get("all_analyzed_tickers", [])
             
@@ -603,6 +604,7 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
                     'selected_news': selected_news_for_frontend,
                     'selected_domestic_news': selected_domestic_news_for_frontend,
                     'historical_prices': historical_prices,
+                    'short_term_prices': short_term_prices, # 단기 데이터 추가
                     'news_event_markers': news_event_markers,
                     'all_analyzed_tickers': all_analyzed_tickers,
                     'correlation_matrix': correlation_matrix,
