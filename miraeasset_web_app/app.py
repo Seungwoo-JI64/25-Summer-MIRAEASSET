@@ -546,7 +546,8 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
             # market_analysis_result에서 correlation_matrix 추출
             market_analysis_result = current_state.get("market_analysis_result", {})
             correlation_matrix = market_analysis_result.get("correlation_matrix", {})
-
+            # 국문 기업 설명을 상태(state)에서 가져옵니다.
+            ko_company_description = current_state.get("ko_company_description", "기업 설명 정보를 불러오지 못했습니다.")
 
             if final_report:
                 socketio.emit('analysis_complete', {
@@ -558,6 +559,7 @@ def run_full_analysis_pipeline(ticker: str, sid: str):
                     'news_event_markers': news_event_markers,
                     'all_analyzed_tickers': all_analyzed_tickers,
                     'correlation_matrix': correlation_matrix,
+                    'ko_company_description': ko_company_description, # 최종 데이터에 국문 설명 추가
                     'message': '분석 완료!'
                 }, room=sid)
             else:

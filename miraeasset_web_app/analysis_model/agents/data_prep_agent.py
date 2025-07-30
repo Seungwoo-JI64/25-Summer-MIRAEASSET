@@ -94,22 +94,43 @@ def run_data_prep(state: AnalysisState) -> Dict[str, Any]:
     if not ticker:
         raise ValueError("상태(State)에 'ticker'가 없습니다. 티커를 반드시 제공해야 합니다.")
 
+    company_description = None
+    ko_company_description = None # 국문 설명 변수 추가
+    financial_statements = None
+
     # company_name 없으면 티커로 조회
-    if not company_name:
-        try:
-            res = supabase_client.table("company_summary").select("company_name, summary").eq("ticker", ticker).single().execute()
-            if res.data:
-                company_name = res.data.get("company_name")
-                company_description = res.data.get("summary")
-            else:
-                company_name = None
-                company_description = "DB에 해당 기업 정보가 없습니다."
-        except Exception as e:
+    # if not company_name:
+    #     try:
+    #         res = supabase_client.table("company_summary").select("company_name, summary, ko_summary").eq("ticker", ticker).single().execute()
+    #         if res.data:
+    #             company_name = res.data.get("company_name")
+    #             company_description = res.data.get("summary")
+    #             ko_company_description = res.data.get("ko_summary")  # 국문 설명 조회
+    #         else:
+    #             company_name = None
+    #             company_description = "DB에 해당 기업 정보가 없습니다."
+    #             ko_company_description = "DB에 해당 기업 정보가 없습니다."
+    #     except Exception as e:
+    #         company_name = None
+    #         company_description = f"DB 조회 오류: {e}"
+    # else:
+    #     # 만약 이미 company_name 있으면 company_description만 조회하거나 필요에 따라 처리
+    #     company_description = None
+
+    try:
+        res = supabase_client.table("company_summary").select("company_name, summary, ko_summary").eq("ticker", ticker).single().execute()
+        if res.data:
+            company_name = res.data.get("company_name")
+            company_description = res.data.get("summary")
+            ko_company_description = res.data.get("ko_summary")  # 국문 설명 조회
+        else:
             company_name = None
-            company_description = f"DB 조회 오류: {e}"
-    else:
-        # 만약 이미 company_name 있으면 company_description만 조회하거나 필요에 따라 처리
-        company_description = None
+            company_description = "DB에 해당 기업 정보가 없습니다."
+            ko_company_description = "DB에 해당 기업 정보가 없습니다, 데이터 준비 에이전트 오류."
+    except Exception as e:
+        company_name = None
+        company_description = f"DB 조회 오류: {e}"
+        ko_company_description = f"DB 조회 오류: {e}"
 
     try:
         financial_res = supabase_client.table("financial_statements").select("summary").eq("ticker", ticker).single().execute()
@@ -124,6 +145,7 @@ def run_data_prep(state: AnalysisState) -> Dict[str, Any]:
         "company_name": company_name,
         "ticker": ticker,
         "company_description": company_description,
+        "ko_company_description": ko_company_description,  # 국문 설명 추가
         "financial_statements": financial_statements
     }
 

@@ -566,6 +566,7 @@
                 allAnalyzedTickers: [], 
                 correlationMatrix: {}, // 상관관계 매트릭스는 이제 사용되지 않지만, 데이터 구조 일관성을 위해 유지
                 analyzedStockPortfolioSummary: null,
+                ko_company_description: "", // 국문 설명을 저장할 필드
                 allKnownTickerNames: {} // 티커와 이름 매핑을 위한 캐시
             };
 
@@ -1020,6 +1021,7 @@
                 cachedAnalysisData.allAnalyzedTickers = data.all_analyzed_tickers || [];
                 cachedAnalysisData.correlationMatrix = data.correlation_matrix || {}; 
                 cachedAnalysisData.analyzedStockPortfolioSummary = data.portfolio_summary || null; 
+                cachedAnalysisData.ko_company_description = data.ko_company_description || "기업 설명이 없습니다.";
 
                 // 현재 분석된 주식의 이름을 캐시에 추가 (만약 포트폴리오에 없던 주식이라도)
                 if (cachedAnalysisData.analyzedStockPortfolioSummary && cachedAnalysisData.analyzedStockPortfolioSummary.ticker) {
@@ -1057,7 +1059,7 @@
                 newsTypeSelect.value = 'selected_news';
                 displayNewsSummaries(cachedAnalysisData.selectedNews);
 
-                displayResults(data.report, data.portfolio_summary);
+                displayResults(data.report, data.portfolio_summary,  cachedAnalysisData.ko_company_description);
                 
                 marketDataVisualizationSection.style.display = 'block';
                 populateTickerChartBlocks(cachedAnalysisData.allAnalyzedTickers); 
@@ -1150,11 +1152,16 @@
             }
 
 
-            function displayResults(report, portfolioSummary) {
+            function displayResults(report, portfolioSummary, ko_company_description) {
                 let html = '';
-
+                const stockName = portfolioSummary.name || portfolioSummary.ticker;
+                html += `<div class="report-section" style="border-bottom: 2px solid #007bff;">`;
+                html += `<h2>${stockName} (${portfolioSummary.ticker}) 기업 개요</h2>`;
+                html += `<p>${ko_company_description}</p>`; // 받아온 국문 설명을 여기에 표시
+                html += `</div>`;
+                
                 // 🚨 NEW: is_portfolio_holding 플래그를 확인하여 개별 보유 현황 섹션 표시 여부 결정
-                if (portfolioSummary && portfolioSummary.is_portfolio_holding) {
+                /*if (portfolioSummary && portfolioSummary.is_portfolio_holding) {
                     const stockName = portfolioSummary.name || portfolioSummary.ticker;
                     const marketType = getTickerMarketType(portfolioSummary.ticker);
                     const defaultDisplayCurrency = marketType === 'KR' ? 'KRW' : 'USD'; 
@@ -1164,7 +1171,9 @@
                     // portfolioSummary.message는 is_portfolio_holding이 false일 때만 설정되므로, 여기서는 불필요
                     html += `<p><strong>구매 가격:</strong> ${formatCurrency(portfolioSummary.purchase_price, marketType, defaultDisplayCurrency)} (수량: ${portfolioSummary.quantity})</p>`;
                     html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, defaultDisplayCurrency)}</p>`;
-                    
+
+
+    
                     let profitLossClass = getProfitLossClass(portfolioSummary.profit_loss_percentage);
 
                     html += `<p><strong>주당 손익:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_per_share, marketType, defaultDisplayCurrency)}</span></p>`;
@@ -1172,15 +1181,16 @@
                     html += `<p><strong>손익률:</strong> <span class="${profitLossClass}">${formatCurrency(portfolioSummary.profit_loss_percentage, '', '', true)}</span></p>`;
                     html += `</div>`;
                 } else if (portfolioSummary && portfolioSummary.name && portfolioSummary.ticker) {
-                    // 보유하지 않은 주식이라도 현재 가격은 보여줄 수 있도록 (간략 정보)
                     const stockName = portfolioSummary.name || portfolioSummary.ticker;
                     const marketType = getTickerMarketType(portfolioSummary.ticker);
                     html += `<div class="report-section" style="border-bottom: 1px dashed #eee;">`;
+                    // 보유하지 않은 주식이라도 현재 가격은 보여줄 수 있도록 (간략 정보)
                     html += `<h2>${stockName} (${portfolioSummary.ticker}) 현재 가격 정보</h2>`;
                     html += `<p><strong>현재 가격:</strong> ${formatCurrency(portfolioSummary.current_price, marketType, marketType === 'KR' ? 'KRW' : 'USD')}</p>`;
                     html += `<p><em>이 주식은 포트폴리오에 보유하고 있지 않습니다.</em></p>`;
                     html += `</div>`;
-                }
+
+                }*/
 
 
                 if (report.report_title) {
