@@ -828,44 +828,44 @@
 
 
             function displayPortfolioOverview(stocks, totalSummary) {
-                let overviewHtml = `<h2>내 전체 포트폴리오 현황</h2>`;
+                let overviewHtml = `<h2 class="market-section-title">보유한 포트폴리오</h2>`;
                 
-                // 상단 요약 섹션
-                const totalCurrentValue = totalSummary.total_current_value;
-                const totalProfitLoss = totalSummary.total_profit_loss; // 총 손익으로 현재 가치 색상 결정
-                const totalProfitLossPercentage = totalSummary.total_profit_loss_percentage;
+                // // 상단 요약 섹션
+                // const totalCurrentValue = totalSummary.total_current_value;
+                // const totalProfitLoss = totalSummary.total_profit_loss; // 총 손익으로 현재 가치 색상 결정
+                // const totalProfitLossPercentage = totalSummary.total_profit_loss_percentage;
 
-                // 총 손익에 따라 현재 보유 가치의 색상을 결정
-                const totalCurrentValueClass = (totalProfitLoss > 0) ? 'blue' : (totalProfitLoss < 0 ? 'loss' : 'neutral');
-                const totalProfitLossPercentageClass = getProfitLossClass(totalProfitLossPercentage);
+                // // 총 손익에 따라 현재 보유 가치의 색상을 결정
+                // const totalCurrentValueClass = (totalProfitLoss > 0) ? 'blue' : (totalProfitLoss < 0 ? 'loss' : 'neutral');
+                // const totalProfitLossPercentageClass = getProfitLossClass(totalProfitLossPercentage);
 
-                overviewHtml += `<div class="top-summary-flex-container">`;
-                overviewHtml += `<div class="top-summary-item">`;
-                overviewHtml += `<div class="summary-label">현재 내 주식 보유 가치</div>`;
-                // 총 보유 가치는 항상 원화로 표시
-                overviewHtml += `<div class="summary-value ${totalCurrentValueClass}">${formatCurrency(totalCurrentValue, 'KR', 'KRW')}</div>`;
-                overviewHtml += `</div>`;
-                overviewHtml += `<div class="top-summary-item">`;
-                overviewHtml += `<div class="summary-label">총 손익률</div>`;
-                overviewHtml += `<div class="summary-value ${totalProfitLossPercentageClass}">${formatCurrency(totalProfitLossPercentage, '', '', true)}</div>`;
-                overviewHtml += `</div>`;
-                overviewHtml += `</div>`;
+                // overviewHtml += `<div class="top-summary-flex-container">`;
+                // overviewHtml += `<div class="top-summary-item">`;
+                // overviewHtml += `<div class="summary-label">현재 내 주식 보유 가치</div>`;
+                // // 총 보유 가치는 항상 원화로 표시
+                // overviewHtml += `<div class="summary-value ${totalCurrentValueClass}">${formatCurrency(totalCurrentValue, 'KR', 'KRW')}</div>`;
+                // overviewHtml += `</div>`;
+                // overviewHtml += `<div class="top-summary-item">`;
+                // overviewHtml += `<div class="summary-label">총 손익률</div>`;
+                // overviewHtml += `<div class="summary-value ${totalProfitLossPercentageClass}">${formatCurrency(totalProfitLossPercentage, '', '', true)}</div>`;
+                // overviewHtml += `</div>`;
+                // overviewHtml += `</div>`;
 
                 // 주식 구분
                 const koreanStocks = stocks.filter(s => getTickerMarketType(s.ticker) === 'KR');
                 const usStocks = stocks.filter(s => getTickerMarketType(s.ticker) === 'US');
 
                 // 국내 주식 섹션
-                overviewHtml += `<h2 class="market-section-title">국내주식</h2>`;
+                // overviewHtml += `<h2 class="market-section-title">보유한 포트폴리오</h2>`;
                 overviewHtml += buildStockTable(koreanStocks, 'KRW'); // 국내주식은 항상 KRW
 
                 // 해외 주식 섹션
-                overviewHtml += `<h2 class="market-section-title">해외주식</h2>`;
-                overviewHtml += `<div class="currency-toggle-buttons">`;
-                overviewHtml += `<button class="currency-toggle-btn active" data-currency="USD">USD</button>`;
-                overviewHtml += `<button class="currency-toggle-btn" data-currency="KRW">KRW</button>`;
-                overviewHtml += `</div>`;
-                overviewHtml += buildStockTable(usStocks, 'USD', 'us-stocks-table'); // 기본값 USD, ID 추가
+                // overviewHtml += `<h2 class="market-section-title">해외주식</h2>`;
+                // overviewHtml += `<div class="currency-toggle-buttons">`;
+                // overviewHtml += `<button class="currency-toggle-btn active" data-currency="USD">USD</button>`;
+                // overviewHtml += `<button class="currency-toggle-btn" data-currency="KRW">KRW</button>`;
+                // overviewHtml += `</div>`;
+                // overviewHtml += buildStockTable(usStocks, 'USD', 'us-stocks-table'); // 기본값 USD, ID 추가
 
                 portfolioOverviewDiv.innerHTML = overviewHtml;
 
@@ -1115,8 +1115,29 @@
                 console.log("showStockInfo called for ticker:", ticker);
                 stockInfoContent.innerHTML = '<p>정보를 로드 중입니다...</p>';
                 stockInfoModal.style.display = 'flex';
-
                 try {
+                    const response = await fetch(`/stock_info/${ticker}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                
+                    if (data.error) {
+                        stockInfoContent.innerHTML = `<p class="error">정보 로드 실패: ${data.error}</p>`;
+                    } else {
+                        // API로부터 받은 이름과 국문 설명으로 팝업 내용을 구성합니다.
+                        let infoHtml = `<h3>${data.name} (${ticker})</h3>`;
+                        // DB의 줄바꿈 문자를 HTML의 <br> 태그로 변환하여 가독성을 높입니다.
+                        infoHtml += `<p>${data.ko_summary.replace(/\n/g, '<br>')}</p>`;
+                        stockInfoContent.innerHTML = infoHtml;
+                    }
+                } catch (error) {
+                    console.error('주식 정보 로딩 실패:', error);
+                    stockInfoContent.innerHTML = `<p class="error">정보를 로드할 수 없습니다: ${error.message}</p>`;
+                }
+            
+
+            /*    try {
                     const response = await fetch(`/stock_info/${ticker}`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1149,7 +1170,9 @@
                     console.error('주식 정보 로딩 실패:', error);
                     stockInfoContent.innerHTML = `<p class="error">주식 정보를 로드할 수 없습니다: ${error.message}</p>`;
                 }
+                    */
             }
+            
 
 
             function displayResults(report, portfolioSummary, ko_company_description) {
