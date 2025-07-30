@@ -2,7 +2,7 @@
     {
         "name": "삼성전자",
         "ticker": "005930.KS",
-        "purchase_price": 75000,
+        "purchase_price": 82000,
         "quantity": 10
     },
     {
@@ -20,7 +20,7 @@
     {
         "name": "네이버",
         "ticker": "035420.KS",
-        "purchase_price": 200000,
+        "purchase_price": 260000,
         "quantity": 3
     },
     {

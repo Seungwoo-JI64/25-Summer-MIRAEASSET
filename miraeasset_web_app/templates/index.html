@@ -201,7 +201,7 @@
         }
         
         /* 주식 정보 팝업 (모달) 스타일 */
-        .stock-info-modal, .news-details-modal { /* 두 모달에 공통 스타일 적용 */
+        .stock-info-modal { 
             display: none; /* Hidden by default */
             position: fixed; /* Stay in place */
             z-index: 1000; /* Sit on top */
@@ -211,7 +211,18 @@
             height: 100%; /* Full height */
             overflow: auto; /* Enable scroll if needed */
             background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-            display: flex; /* 중앙 정렬을 위해 flex 사용 */
+            justify-content: center; /* 수평 중앙 정렬 */
+            align-items: center; /* 수직 중앙 정렬 */
+        }
+        .news-details-modal {
+            display: flex;
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
             justify-content: center; /* 수평 중앙 정렬 */
             align-items: center; /* 수직 중앙 정렬 */
         }
@@ -524,7 +535,6 @@
     <div id="stockInfoModal" class="stock-info-modal">
         <div class="stock-info-modal-content">
             <span class="close-button close-stock-info-modal-button">×</span>
-            <h3>주식 정보</h3>
             <div id="stockInfoContent"></div>
         </div>
     </div>
@@ -533,7 +543,11 @@
     <div id="newsDetailsModal" class="news-details-modal">
         <div class="news-details-modal-content">
             <span class="close-button close-news-details-modal-button">×</span>
-            <h3 id="newsDetailsModalTitle"></h3>
+            <h1>제9회 2025 미래에셋증권 AI Festival</h1>
+            <h2>DATA TADA 팀</h2>
+            <p>안녕하세요! DATA TADA 팀입니다.</p>
+            <p>본 서비스는 사용자의 포트폴리오(예시)와 사전에 수집한 KOSPI 100의 기업들에 대해, 뉴스에 기반한 주식분석을 진행합니다.</p>
+            <p>해당 페이지는 저희 팀의 프로토타입 서비스이며, 2025년 8월 22일까지 운영됩니다.</p>
             <div id="newsDetailsContent"></div>
         </div>
     </div>
