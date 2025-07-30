@@ -173,83 +173,150 @@ def run_market_correlation(state: AnalysisState) -> Dict[str, Any]:
             print(f"⚠️ '{metric_ticker}' 상관관계 조회 중 오류 발생: {e}")
             correlation_summary.append(get_correlation_text(target_name, metric_name, None))
 
-    # 5. 뉴스 블록별 주가 데이터 수집 (변화 없음)
-    all_news = selected_news + selected_domestic_news
-    if not all_news:
-        final_market_result: MarketAnalysisResult = {
-            "correlation_summary": correlation_summary,
-            "news_impact_data": [],
-            "correlation_matrix": correlation_matrix_data
-        }
-        return {
-            "market_analysis_result": final_market_result,
-            "historical_prices": historical_prices_data,
-            "news_event_markers": cleaned_news_event_markers, # 변경된 news_event_markers 반환
-            "all_analyzed_tickers": list(all_analyzed_tickers)
-        }
+    # # 5. 뉴스 블록별 주가 데이터 수집
+    # all_news = selected_news + selected_domestic_news
+    # if not all_news:
+    #     final_market_result: MarketAnalysisResult = {
+    #         "correlation_summary": correlation_summary,
+    #         "news_impact_data": [],
+    #         "correlation_matrix": correlation_matrix_data
+    #     }
+    #     return {
+    #         "market_analysis_result": final_market_result,
+    #         "historical_prices": historical_prices_data,
+    #         "news_event_markers": cleaned_news_event_markers, # 변경된 news_event_markers 반환
+    #         "all_analyzed_tickers": list(all_analyzed_tickers)
+    #     }
         
-    sorted_news = sorted(all_news, key=lambda x: x['publish_date'] if 'publish_date' in x else x['published_date'])
+    # sorted_news = sorted(all_news, key=lambda x: x['publish_date'] if 'publish_date' in x else x['published_date'])
     
-    news_blocks: List[List[Dict]] = []
-    if sorted_news:
-        current_block = [sorted_news[0]]
-        for i in range(1, len(sorted_news)):
-            prev_date_str = current_block[-1].get('publish_date') or current_block[-1].get('published_date')
-            curr_date_str = sorted_news[i].get('publish_date') or sorted_news[i].get('published_date')
+    # news_blocks: List[List[Dict]] = []
+    # if sorted_news:
+    #     current_block = [sorted_news[0]]
+    #     for i in range(1, len(sorted_news)):
+    #         prev_date_str = current_block[-1].get('publish_date') or current_block[-1].get('published_date')
+    #         curr_date_str = sorted_news[i].get('publish_date') or sorted_news[i].get('published_date')
 
-            if not prev_date_str or not curr_date_str:
-                continue
+    #         if not prev_date_str or not curr_date_str:
+    #             continue
 
-            prev_date = pd.to_datetime(prev_date_str)
-            curr_date = pd.to_datetime(curr_date_str)
+    #         prev_date = pd.to_datetime(prev_date_str)
+    #         curr_date = pd.to_datetime(curr_date_str)
 
-            if (curr_date - prev_date).days <= 7:
-                current_block.append(sorted_news[i])
-            else:
-                news_blocks.append(current_block)
-                current_block = [sorted_news[i]]
-        news_blocks.append(current_block)
+    #         if (curr_date - prev_date).days <= 7:
+    #             current_block.append(sorted_news[i])
+    #         else:
+    #             news_blocks.append(current_block)
+    #             current_block = [sorted_news[i]]
+    #     news_blocks.append(current_block)
 
-    news_impact_data: List[NewsImpactData] = []
-    for block in news_blocks:
-        block_dates = []
-        for n in block:
-            news_date_str = n.get("publish_date") or n.get("published_date")
-            if news_date_str:
-                block_dates.append(pd.to_datetime(news_date_str).date())
+    # news_impact_data: List[NewsImpactData] = []
+    # for block in news_blocks:
+    #     block_dates = []
+    #     for n in block:
+    #         news_date_str = n.get("publish_date") or n.get("published_date")
+    #         if news_date_str:
+    #             block_dates.append(pd.to_datetime(news_date_str).date())
         
-        if not block_dates: continue
+    #     if not block_dates: continue
 
-        block_start_raw = min(block_dates)
-        block_end_raw = max(block_dates)
+    #     block_start_raw = min(block_dates)
+    #     block_end_raw = max(block_dates)
 
-        fetch_start_date = (datetime.combine(block_start_raw, datetime.min.time()) - timedelta(days=7)).strftime('%Y-%m-%d')
-        fetch_end_date = (datetime.combine(block_end_raw, datetime.min.time()) + timedelta(days=7)).strftime('%Y-%m-%d')
+    #     fetch_start_date = (datetime.combine(block_start_raw, datetime.min.time()) - timedelta(days=7)).strftime('%Y-%m-%d')
+    #     fetch_end_date = (datetime.combine(block_end_raw, datetime.min.time()) + timedelta(days=7)).strftime('%Y-%m-%d')
         
-        block_tickers = {target_ticker}.union(*(set(n.get("related_metrics", [])) for n in block))
-        block_titles = [n['title'] for n in block]
+    #     block_tickers = {target_ticker}.union(*(set(n.get("related_metrics", [])) for n in block))
+    #     block_titles = [n['title'] for n in block]
         
-        price_data_by_name: Dict[str, TickerPriceData] = {}
-        for ticker in block_tickers:
-            df = get_stock_data_from_supabase(ticker, fetch_start_date, fetch_end_date)
-            if df is not None and not df.empty:
-                prices_list = [[row['date'], row['close']] for _, row in df.iterrows()]
-                change_summary = "데이터 부족"
-                if len(df['close']) > 1:
-                    start_price, end_price = df['close'].iloc[0], df['close'].iloc[-1]
-                    percentage_change = ((end_price - start_price) / start_price) * 100 if start_price != 0 else 0
-                    change_text = "상승" if percentage_change >= 0 else "하락"
-                    period_days = (datetime.strptime(df['date'].iloc[-1], '%Y-%m-%d').date() - datetime.strptime(df['date'].iloc[0], '%Y-%m-%d').date()).days + 1
-                    change_summary = f"{period_days}일간 약 {abs(percentage_change):.2f}% {change_text}했습니다."
+    #     price_data_by_name: Dict[str, TickerPriceData] = {}
+    #     for ticker in block_tickers:
+    #         df = get_stock_data_from_supabase(ticker, fetch_start_date, fetch_end_date)
+    #         if df is not None and not df.empty:
+    #             prices_list = [[row['date'], row['close']] for _, row in df.iterrows()]
+    #             change_summary = "데이터 부족"
+    #             if len(df['close']) > 1:
+    #                 start_price, end_price = df['close'].iloc[0], df['close'].iloc[-1]
+    #                 percentage_change = ((end_price - start_price) / start_price) * 100 if start_price != 0 else 0
+    #                 change_text = "상승" if percentage_change >= 0 else "하락"
+    #                 period_days = (datetime.strptime(df['date'].iloc[-1], '%Y-%m-%d').date() - datetime.strptime(df['date'].iloc[0], '%Y-%m-%d').date()).days + 1
+    #                 change_summary = f"{period_days}일간 약 {abs(percentage_change):.2f}% {change_text}했습니다."
                 
-                name = ticker_to_name_map.get(ticker, ticker)
-                price_data_by_name[name] = {"ticker": ticker, "prices": prices_list, "change_summary": change_summary}
+    #             name = ticker_to_name_map.get(ticker, ticker)
+    #             price_data_by_name[name] = {"ticker": ticker, "prices": prices_list, "change_summary": change_summary}
         
-        if price_data_by_name:
-            news_impact_data.append({
-                "news_titles": block_titles, "start_date": fetch_start_date,
-                "end_date": fetch_end_date, "price_data_by_name": price_data_by_name
-            })
+    #     if price_data_by_name:
+    #         news_impact_data.append({
+    #             "news_titles": block_titles, "start_date": fetch_start_date,
+    #             "end_date": fetch_end_date, "price_data_by_name": price_data_by_name
+    #         })
+
+    # 5. 뉴스 블록별 주가 데이터 수집 (기존 로직 유지)
+    all_news = (selected_news) + (selected_domestic_news)
+    news_impact_data: List[NewsImpactData] = []
+    
+    if all_news:
+        sorted_news = sorted(all_news, key=lambda x: x.get('publish_date') or x.get('published_date'))
+        news_blocks: List[List[Dict]] = []
+        if sorted_news:
+            current_block = [sorted_news[0]]
+            for i in range(1, len(sorted_news)):
+                prev_date = pd.to_datetime(current_block[-1].get('publish_date') or current_block[-1].get('published_date'))
+                curr_date = pd.to_datetime(sorted_news[i].get('publish_date') or sorted_news[i].get('published_date'))
+                if (curr_date - prev_date).days <= 7:
+                    current_block.append(sorted_news[i])
+                else:
+                    news_blocks.append(current_block)
+                    current_block = [sorted_news[i]]
+            news_blocks.append(current_block)
+
+        for block in news_blocks:
+            block_dates = [pd.to_datetime(n.get('publish_date') or n.get('published_date')).date() for n in block]
+            block_start_raw, block_end_raw = min(block_dates), max(block_dates)
+            fetch_start_date = (datetime.combine(block_start_raw, datetime.min.time()) - timedelta(days=7)).strftime('%Y-%m-%d')
+            fetch_end_date = (datetime.combine(block_end_raw, datetime.min.time()) + timedelta(days=7)).strftime('%Y-%m-%d')
+            block_tickers = {target_ticker}.union(*(set(n.get("related_metrics", [])) for n in block))
+            block_titles = [n['title'] for n in block]
+            
+            price_data_by_name: Dict[str, TickerPriceData] = {}
+            for ticker in block_tickers:
+                df = get_stock_data_from_supabase(ticker, fetch_start_date, fetch_end_date)
+                if df is not None and not df.empty:
+                    prices_list = [[row['date'], row['close']] for _, row in df.iterrows()]
+                    change_summary = "데이터 부족"
+                    if len(df['close']) > 1:
+                        start_price, end_price = df['close'].iloc[0], df['close'].iloc[-1]
+                        percentage_change = ((end_price - start_price) / start_price) * 100 if start_price != 0 else 0
+                        change_text = "상승" if percentage_change >= 0 else "하락"
+                        period_days = (pd.to_datetime(df['date'].iloc[-1]).date() - pd.to_datetime(df['date'].iloc[0]).date()).days + 1
+                        change_summary = f"{period_days}일간 약 {abs(percentage_change):.2f}% {change_text}했습니다."
+                    
+                    name = ticker_to_name_map.get(ticker, ticker)
+                    price_data_by_name[name] = {"ticker": ticker, "prices": prices_list, "change_summary": change_summary}
+            
+            if price_data_by_name:
+                news_impact_data.append({
+                    "news_titles": block_titles, "start_date": fetch_start_date,
+                    "end_date": fetch_end_date, "price_data_by_name": price_data_by_name
+                })
+
+    # 6. "단기 주식 변동" 그래프를 위한 데이터 가공
+    short_term_prices: Dict[str, List[Dict[str, Any]]] = {}
+    temp_short_term_data: Dict[str, Dict[str, float]] = {}
+
+    for impact_item in news_impact_data:
+        for name, price_data in impact_item.get("price_data_by_name", {}).items():
+            ticker = price_data["ticker"]
+            if ticker not in temp_short_term_data:
+                temp_short_term_data[ticker] = {}
+            
+            for date, close_price in price_data["prices"]:
+                temp_short_term_data[ticker][date] = close_price
+
+    for ticker, date_price_map in temp_short_term_data.items():
+        # 날짜순으로 정렬하여 리스트로 변환
+        sorted_prices = sorted(date_price_map.items())
+        short_term_prices[ticker] = [{"date": date, "close": price} for date, price in sorted_prices]
 
     final_market_result: MarketAnalysisResult = {
         "correlation_summary": correlation_summary,
@@ -261,6 +328,7 @@ def run_market_correlation(state: AnalysisState) -> Dict[str, Any]:
     return {
         "market_analysis_result": final_market_result,
         "historical_prices": historical_prices_data,
+        "short_term_prices": short_term_prices, # 단기 데이터 추가
         "news_event_markers": cleaned_news_event_markers, # 변경된 news_event_markers 반환
         "all_analyzed_tickers": list(all_analyzed_tickers)
     }
