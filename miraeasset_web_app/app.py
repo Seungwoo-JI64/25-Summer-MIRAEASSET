@@ -106,9 +106,14 @@ COMMON_INDICES_CURRENCIES = {
     '^DJI': 'Dow Jones Industrial Average',
     '^KS11': 'KOSPI Composite Index',
     '^KQ11': 'KOSDAQ Composite Index',
-    'USDKRW=X': 'USD/KRW 환율',
-    'JPYKRW=X': 'JPY/KRW 환율',
-    'EURKRW=X': 'EUR/KRW 환율',
+    '^NDX': "NASDAQ-100",
+    'LIT': '리튬 ETF',
+    '^TNX': '미국 10년물 국채 수익률',
+    'NBI': '나스닥 바이오테크놀로지 지수',
+    '^VIX': 'CBOE 변동성 지수',
+    'CL=F': 'WTI 원유 선물',
+    'FDN': '다우존스 인터넷 지수',
+    'USDKRW=X': '달러/원 환율'
 }
 
 
@@ -308,26 +313,68 @@ def get_full_portfolio_summary():
 @app.route('/stock_info/<ticker>', methods=['GET'])
 def get_single_stock_info(ticker: str):
     """
-    특정 티커의 현재 주가 정보와 회사 이름을 반환합니다. (포트폴리오 정보 없이)
+    특정 티커의 현재 주가 정보와 회사 이름을 반환합니다.
     """
-    stock_info = get_stock_price_and_info(ticker, purchase_price=None, quantity=None)
+    # stock_info = get_stock_price_and_info(ticker, purchase_price=None, quantity=None)
     
-    # 헬퍼 함수를 사용하여 회사 이름 조회 (이름이 None일 수 있음)
-    company_name_from_stocks = _get_company_name_from_db(ticker)
+    # # 헬퍼 함수를 사용하여 회사 이름 조회 (이름이 None일 수 있음)
+    # company_name_from_stocks = _get_company_name_from_db(ticker)
     
-    # UI 표시용 이름은 stocks 테이블에서 가져온 이름이 없으면 financial_statements에서 가져옴
-    display_name = company_name_from_stocks
-    if not display_name or display_name == ticker: # stocks 테이블에 이름 없으면 financial_statements 캐시에서 가져옴
-        for fs_company in _financial_statement_companies:
-            if fs_company['ticker'] == ticker:
-                display_name = fs_company['name']
-                break
-    if not display_name or display_name == ticker: # 그래도 없으면 티커 사용
-        display_name = ticker
+    # # UI 표시용 이름은 stocks 테이블에서 가져온 이름이 없으면 financial_statements에서 가져옴
+    # display_name = company_name_from_stocks
+    # if not display_name or display_name == ticker: # stocks 테이블에 이름 없으면 financial_statements 캐시에서 가져옴
+    #     for fs_company in _financial_statement_companies:
+    #         if fs_company['ticker'] == ticker:
+    #             display_name = fs_company['name']
+    #             break
+    # if not display_name or display_name == ticker: # 그래도 없으면 티커 사용
+    #     display_name = ticker
 
-    stock_info['name'] = display_name # UI 표시용 이름으로 설정
+    # stock_info['name'] = display_name # UI 표시용 이름으로 설정
     
-    return jsonify(stock_info)
+    # return jsonify(stock_info)
+    if not supabase_client_global:
+        return jsonify({"error": "Supabase 클라이언트가 초기화되지 않았습니다."}), 500
+
+    try:
+        # 1. 지수/환율인 경우 'indices_summary' 테이블에서 조회
+        if ticker in COMMON_INDICES_CURRENCIES:
+            name_to_display = COMMON_INDICES_CURRENCIES[ticker]
+            response = supabase_client_global.table("indices_summary").select("ko_summary").eq('ticker', ticker).single().execute()
+            
+            ko_summary = '이 지표에 대한 국문 설명이 없습니다.'
+            if response.data:
+                ko_summary = response.data.get('ko_summary', ko_summary)
+            
+            return jsonify({
+                "name": name_to_display,
+                "ko_summary": ko_summary
+            })
+
+        # 2. 기업인 경우 'company_summary' 테이블에서 조회
+        else:
+            response = supabase_client_global.table("company_summary").select("company_name, ko_summary").eq('ticker', ticker).single().execute()
+
+            if response.data:
+                return jsonify({
+                    "name": response.data.get('company_name', ticker),
+                    "ko_summary": response.data.get('ko_summary', '이 기업에 대한 국문 설명이 없습니다.')
+                })
+            else:
+                # company_summary에 정보가 없을 경우를 대비한 대체 처리
+                display_name = ticker
+                for fs_company in _financial_statement_companies:
+                    if fs_company['ticker'] == ticker:
+                        display_name = fs_company['name']
+                        break
+                return jsonify({
+                    "name": display_name,
+                    "ko_summary": "이 기업에 대한 국문 설명이 없습니다."
+                })
+
+    except Exception as e:
+        print(f"🚨 Supabase에서 '/stock_info/{ticker}' 조회 중 오류 발생: {e}")
+        return jsonify({"error": f"데이터베이스 조회 중 오류 발생: {str(e)}"}), 500
 
 
 # NEW: 재무제표 기업 목록을 모두 반환하는 엔드포인트 추가

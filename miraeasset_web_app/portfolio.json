@@ -28,17 +28,5 @@
         "ticker": "000100.KS",
         "purchase_price": 60000,
         "quantity": 8
-    },
-    {
-        "name": "애플 (AAPL)",
-        "ticker": "AAPL",
-        "purchase_price": 170.50,
-        "quantity": 12
-    },
-    {
-        "name": "엔비디아 (NVDA)",
-        "ticker": "NVDA",
-        "purchase_price": 1000.25,
-        "quantity": 2
     }
 ]
