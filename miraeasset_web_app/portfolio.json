@@ -12,12 +12,6 @@
         "quantity": 136
     },
     {
-        "name": "카카오",
-        "ticker": "035720.KS",
-        "purchase_price": 50000,
-        "quantity": 20
-    },
-    {
         "name": "네이버",
         "ticker": "035420.KS",
         "purchase_price": 260000,

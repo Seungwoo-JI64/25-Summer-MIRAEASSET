@@ -34,7 +34,7 @@ for i in range(len(Name_US)):
     ticker = yf.Ticker(Ticker)
     
     # 'period' 대신 'start'와 'end'를 사용하고, 하루치 데이터이므로 'interval="1d"' 사용
-    hist = ticker.history(start=start_date, end=end_date, interval="4h")
+    hist = ticker.history(start=start_date, end=end_date)
     
     if not hist.empty:
         hist['name'] = name
@@ -48,9 +48,9 @@ if us_history:
 
     #전처리
     us_df_formatted = us_df.reset_index()
-    us_df_formatted = us_df_formatted[['Datetime', 'Ticker', 'name', 'Close', 'Volume']]
+    us_df_formatted = us_df_formatted[['Date', 'Ticker', 'name', 'Close', 'Volume']]
     us_df_formatted = us_df_formatted.rename(columns={
-        'Datetime': 'time',
+        'Date': 'time',
         'Ticker': 'ticker',
         'name': 'company_name',
         'Close': 'close_price',
