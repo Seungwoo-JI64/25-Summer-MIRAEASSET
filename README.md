@@ -14,8 +14,30 @@ https://datatada-miraeasset-webservice.azurewebsites.net/
  &nbsp;기존의 많은 AI 금융 서비스들이 결과만을 제시하는 **블랙박스(Black Box)** 형태로 운영되어 사용자의 신뢰를 얻기 어렵다는 한계에 주목했습니다. 이러한 문제를 해결하기 위해, AI의 분석 과정을 투명하게 공개하는 **유리상자(Glass Box)** 모델을 핵심 목표로 삼습니다. AI가 어떤 데이터를 참고하고 어떤 과정을 거쳐 결론을 도출했는지 명확히 제시함으로써, 사용자가 AI의 분석을 비판적으로 수용하고 최종적인 투자 판단의 주체로 설 수 있도록 돕습니다.  
  &nbsp;이를 구현하기 위해 서비스는 `LangChain`의 설계 사상을 차용한 자율 에이전트 시스템으로 구축되었습니다. 사용자의 요청이 들어오면, **데이터 준비 → 뉴스 분석(RAG) → 시장 데이터 분석 → 최종 보고서 생성**의 각 단계를 전문화된 **AI 에이전트**들이 순차적으로 수행합니다. 이 과정에서 `Gemini`는 `RAG` 기반의 뉴스 분석을, `HyperCLOVA X`는 최종 보고서의 종합적인 작성을 담당하며, 모든 데이터는 `Supabase` 데이터베이스를 중심으로 관리됩니다. 사용자는 웹 인터페이스를 통해 분석을 요청하고, 실시간으로 업데이트되는 분석 과정을 지켜본 후, 최종적으로 텍스트 보고서와 `Chart.js`로 시각화된 동적 데이터(주가, 뉴스 발생 시점 등)를 함께 제공받습니다. 이렇게 완성된 서비스는 `Docker 컨테이너 기술`을 통해 패키징되어, `Azure 클라우드 플랫폼`에서 안정적으로 운영됩니다.
 
-## 2.2 구동 방식
+## 2.2 파이프라인 구동 방식
 <img alt="Image" width="1920" height="790" src="https://private-user-images.githubusercontent.com/180622587/473487790-b6b42985-a95f-4c39-8736-2e38c4bf6503.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTQwNTgxMTMsIm5iZiI6MTc1NDA1NzgxMywicGF0aCI6Ii8xODA2MjI1ODcvNDczNDg3NzkwLWI2YjQyOTg1LWE5NWYtNGMzOS04NzM2LTJlMzhjNGJmNjUwMy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwODAxJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDgwMVQxNDE2NTNaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT00ZDliMWQyNzI4MzI1OGI4OGEzN2M5ZWZiZDI0OWI4MDU3MGQ4MzM5YjkzNjk1ZjRmOWMxNDk4Mzk4ZmY4ZjQ4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.2rTPSMa0w2w7LBHDmbz4it3OHr2rcv60uAA_P3SARN8">  
+
+### 2.2.1 데이터 수집, 텍스트 전처리
+
+#### ① 기업 재무제표 및 건전성 보고서
+
+#### ② 금융 뉴스 및 요약, 텍스트 임베딩
+
+#### ③ 기업 • 지표 주가
+
+#### ④ 기업 설명 요약문, 텍스트 임베딩
+
+### 2.2.2 웹 백엔드
+
+#### ① 데이터 준비 에이전트
+
+#### ② 뉴스 분석 에이전트
+
+#### ③ 시장 데이터 분석 에이전트
+
+#### ④ 최종 보고서 생성 에이전트
+
+### 2.2.3 웹 프론트엔드
 
 
 # 3. Github 저장 파일 설명
