@@ -70,7 +70,9 @@ https://datatada-miraeasset-webservice.azurewebsites.net/
 # 4. 데이터베이스 테이블 목록 
 Supabase DBMS를 통해 관리한다.
 
-### company_summary : yfinance API에서 회사 설명 추출
+### company_summary
+yfinance API에서 회사 설명 추출  
+
 | 피쳐명 | 설명 | 형식 |    
 |---|---|---|  
 | `ticker` | 기업 식별 기호 | text |   
@@ -80,7 +82,9 @@ Supabase DBMS를 통해 관리한다.
 | `ko_summary` | 기업 설명문(한국어 번역) | text |  
 
 
-### financial_indices : yfinance API에서 주요 지표 지수 추출
+### financial_indices
+yfinance API에서 주요 지표 지수 추출  
+
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | `id` | 자료 저장 순서 | int8 |  
@@ -91,7 +95,9 @@ Supabase DBMS를 통해 관리한다.
 | `created_at` | 추출시간 | timestamptz |  
 
 
-### financial_news_summary : 야후 금융 뉴스 추출 요약 및 임베딩
+### financial_news_summary
+야후 금융 뉴스 추출 요약 및 임베딩  
+
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | `id` | 자료 저장 순서 | int8 |  
@@ -102,7 +108,9 @@ Supabase DBMS를 통해 관리한다.
 | `embedding` | 뉴스 요약 임베딩 | vector(768) |
 | `created_at` | 추출시간 | timestamptz |
 
-### financial_statements : KOPIS 100 기업 재무제표와 건전성 보고서
+### financial_statements
+KOPIS 100 기업 재무제표와 건전성 보고서  
+
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | `ticker` | 기업 식별 기호 | text |  
@@ -110,14 +118,18 @@ Supabase DBMS를 통해 관리한다.
 | `prompt` | LLM에 입력할 프롬프트(재무제표 포함) | timestamptz |  
 | `summary` | 기업 건전성 보고서 | text |
 
-### indices_summary : yfinance API에서 주요 지표 설명 추출
+### indices_summary
+yfinance API에서 주요 지표 설명 추출  
+
 | 피쳐명 | 설명 | 형식 |    
 |---|---|---|  
 | `ticker` | 지표 식별 기호 | text |   
 | `index_name` | 기업명 | text |  
 | `ko_summary` | 기업 설명문(한국어 번역) | text |  
 
-### ko_financial_news_summary : 연합뉴스 금융 뉴스 추출 요약 및 임베딩
+### ko_financial_news_summary
+연합뉴스 금융 뉴스 추출 요약 및 임베딩  
+
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | `id` | 자료 저장 순서 | int8 |  
@@ -128,7 +140,9 @@ Supabase DBMS를 통해 관리한다.
 | `embedding` | 뉴스 요약 임베딩 | vector(768) |
 | `created_at` | 추출시간 | timestamptz |
 
-### korean_stocks : yfinance API 한국 시총 100 주가 추출
+### korean_stocks
+yfinance API 한국 시총 100 주가 추출  
+
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | `time` | 날짜 | timestamptz |  
@@ -138,7 +152,9 @@ Supabase DBMS를 통해 관리한다.
 | `volume` | 거래량 | int8 |
 | `created_at` | 추출시간 | timestamptz |
 
-### un_stocks : yfinance API 미국 시총 100 주가 추출
+### un_stocks
+yfinance API 미국 시총 100 주가 추출  
+
 | 피쳐명 | 설명 | 형식 |   
 |---|---|---|  
 | `time` | 날짜 | timestamptz |  
