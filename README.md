@@ -1,7 +1,16 @@
 # 25-Summer-MIRAEASSET
 2025년 여름방학 B.a.f 미래에셋공모전 서비스부분 DATA TADA팀
+**서정유**, **유희준**, **지승우**
+대표 연락처 : swoo64@naver.com
 
-# 1. Github 저장 파일 설명
+# 1. 서비스 접속 링크
+https://datatada-miraeasset-webservice.azurewebsites.net/
+본 서비스는 프로토타입으로서, 2025년 8월 22일 자정까지 시범 운영됩니다.
+
+> <img alt="Image" width="1920" height="790" src="https://private-user-images.githubusercontent.com/180622587/473487790-b6b42985-a95f-4c39-8736-2e38c4bf6503.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTQwNTgxMTMsIm5iZiI6MTc1NDA1NzgxMywicGF0aCI6Ii8xODA2MjI1ODcvNDczNDg3NzkwLWI2YjQyOTg1LWE5NWYtNGMzOS04NzM2LTJlMzhjNGJmNjUwMy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwODAxJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDgwMVQxNDE2NTNaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT00ZDliMWQyNzI4MzI1OGI4OGEzN2M5ZWZiZDI0OWI4MDU3MGQ4MzM5YjkzNjk1ZjRmOWMxNDk4Mzk4ZmY4ZjQ4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.2rTPSMa0w2w7LBHDmbz4it3OHr2rcv60uAA_P3SARN8">
+
+
+# 2. Github 저장 파일 설명
 | .github/workflows | 폴더 |  |  
 |---|---|---|  
 | daily_financial_indices.yml | 깃허브 Actions 증권데이터/지표지수업로드_매일_jsw.py 자동화 | 지승우 |  
@@ -46,7 +55,7 @@
 | .env | 주식데이터/주식추출_매일_jsw.py, 기업설명추가_jsw.ipynb 업로드 Supabase, google ai studio 접속 키 저장 | 지승우 |  
 | requirements.txt | 깃허브 Actions 구동에 필요한 라이브러리 설치 목록 | 지승우 | 
 
-# 2. Supabase 테이블 목록 
+# 3. 데이터베이스 테이블 목록 
 
 ### company_summary : 야후 금융에서 회사 설명 추출
 | 피쳐명 | 설명 | 형식 |    
