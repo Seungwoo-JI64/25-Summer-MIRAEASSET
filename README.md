@@ -49,7 +49,7 @@ https://datatada-miraeasset-webservice.azurewebsites.net/
 | 25-Summer-MIRAEASSET/miraeasset_web_app/analysis_model |  |
 | `state.py` | AI 분석 파이프라인의 각 단계를 거치면서 기업 정보, 뉴스, 시장 데이터 등 모든 분석 결과가 누적되는 중앙 데이터 전달 객체 정의 |
 | 25-Summer-MIRAEASSET/miraeasset_web_app/analysis_model/agents |  |
-| `data_prep_agent.py` | 사용자가 요청한 기업의 기본 정보와 재무 건전성 요약을 데이터베이스에서 가져와 분석의 기초를 마련하는 에이전트 |
+| `data_prep_agent.py` | 사용자가 요청한 기업의 재무 건전성 보고서를 데이터베이스에서 가져와 분석의 기초를 마련하는 에이전트 |
 | `domestic_news_analyst_agent.py` | 국내 뉴스를 대상으로, RAG(벡터 검색) 기술로 관련 기사를 찾고 `Gemini AI`를 이용해 가장 영향력 있는 뉴스를 선별 및 분석하는 에이전트 |
 | `market_correlation_agent.py` | 뉴스 분석으로 도출된 모든 관련 주체들의 과거 주가 데이터를 DB에서 가져와 ~~통계적 상관관계를 계산하고,~~ 그래프 시각화를 위한 데이터를 가공하는 에이전트 |
 | `news_analyst_agent.py` | 해외 뉴스를 대상으로, RAG(벡터 검색) 기술로 관련 기사를 찾고 `Gemini AI`를 이용해 가장 영향력 있는 뉴스를 선별 및 분석하는 에이전트 |
