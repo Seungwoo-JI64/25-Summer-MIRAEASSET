@@ -152,7 +152,7 @@ yfinance API 한국 시총 100 주가 추출
 | `volume` | 거래량 | int8 |
 | `created_at` | 추출시간 | timestamptz |
 
-### un_stocks
+### us_stocks
 yfinance API 미국 시총 100 주가 추출  
 
 | 피쳐명 | 설명 | 형식 |   
