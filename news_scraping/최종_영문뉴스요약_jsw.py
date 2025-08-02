@@ -39,29 +39,37 @@ def parse_time_ago(time_str):
     if '•' in time_str:
         time_str = time_str.split('•')[1].strip()
 
-    # 정규표현식을 사용하여 숫자와 시간 단위(minute, hour)를 찾습니다.
+    # 정규표현식을 사용하여 숫자와 시간 단위(minute, hour)를 찾기
+    ##  (\d+): 하나 이상의 숫자 -> hour 또는 minute, 첫 번째 캡처 그룹(group 1)
+    ##  \s+: 하나 이상의 공백 문자
+    ##  (minute|hour): 'minute' 또는 'hour' 문자열, 두 번째 캡처 그룹(group 2)
+    ##  s?: 's'가 0번 또는 1번 나타남 ('minute'와 'minutes' 모두 대응)
+    ##  \s+ago: 공백 후 'ago' 문자열
+    ##  re.IGNORECASE: 대소문자를 무시하고 검색
     match = re.search(r'(\d+)\s+(minute|hour)s?\s+ago', time_str, re.IGNORECASE)
     
+    # 정규표현식의 결과
     if match:
-        value = int(match.group(1))
-        unit = match.group(2).lower()
+        value = int(match.group(1)) # 첫 번째 캡처 그룹에서 숫자 추출
+        unit = match.group(2).lower() # 두 번째 캡처 그룹에서 단위 추출 (대소문자 구분 없이)
         
-        if unit == 'minute':
+        if unit == 'minute': # 시간 단위가 '분'
             return timedelta(minutes=value)
-        elif unit == 'hour':
+        elif unit == 'hour': # 시간 단위가 '시'
             return timedelta(hours=value)
             
     return None
 
-##새로운 웹크롤링 함수 생성
+# 뉴스 웹크롤링 함수
 def get_all_news_links(base_urls):
     """
     주어진 모든 URL 페이지에서 12시간 이내에 작성된
     모든 기사의 제목과 링크를 수집하고 중복을 제거합니다.
     """
-    unique_articles = {}
+    unique_articles = {} # 뉴스 목록 저장
 
-    # for 루프 안에서 매번 드라이버를 생성하고 종료하도록 구조 변경
+    # 여러 페이지에 대하여 뉴스 목록 수집
+    # for 루프 안에서 매번 드라이버를 생성하고 종료하도록 구조 변경 <- 파이썬 구동 환경의 부담 줄이기 위해
     for url in base_urls:
         print(f"'{url}' 페이지에서 기사 목록을 수집하는 중...")
         
@@ -79,16 +87,17 @@ def get_all_news_links(base_urls):
 
         try:
             driver.get(url)
-            wait = WebDriverWait(driver, 20)
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.stream-item.story-item")))
+            wait = WebDriverWait(driver, 20) # 페이지 로딩 대기 20초
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.stream-item.story-item"))) # 뉴스 항목이 뜰때까지
 
             # 스크롤 횟수 제한 (최대 10회)
+            # 최하단에서 계속 스크롤을 진행해야 뉴스항목이 로드되는 방식
             print("페이지 스크롤을 시작합니다 (최대 10회)...")
             for i in range(10):
                 try:
-                    last_height = driver.execute_script("return document.body.scrollHeight")
+                    last_height = driver.execute_script("return document.body.scrollHeight") # 스크롤 높이 저장
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                    WebDriverWait(driver, 15).until(
+                    WebDriverWait(driver, 15).until( # 스크롤 후 새 콘텐츠가 로드될 때까지 대기
                         lambda d: d.execute_script("return document.body.scrollHeight") > last_height
                     )
                     print(f"스크롤 {i+1}/10 완료, 새 콘텐츠 로드됨.")
@@ -100,20 +109,21 @@ def get_all_news_links(base_urls):
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             news_list = soup.select('li.stream-item.story-item')
 
+            # 뉴스 항목에서 제목, 링크, 시간 정보 추출
             for item in news_list:
-                title_tag = item.select_one('h3')
-                link_tag = item.select_one('a.subtle-link')
-                time_tag = item.select_one('div.publishing')
+                title_tag = item.select_one('h3') # 제목 태그
+                link_tag = item.select_one('a.subtle-link') # 링크 태그
+                time_tag = item.select_one('div.publishing') # 시간 태그
 
-                if title_tag and link_tag and link_tag.has_attr('href') and time_tag:
-                    time_str = time_tag.get_text(strip=True)
-                    time_delta = parse_time_ago(time_str)
+                if title_tag and link_tag and link_tag.has_attr('href') and time_tag: # 내용이 존재한다면
+                    time_str = time_tag.get_text(strip=True) # 제목 텍스트 추출
+                    time_delta = parse_time_ago(time_str) # 시간 문자열 파싱
                     
-                    if time_delta and time_delta <= timedelta(hours=12):
+                    if time_delta and time_delta <= timedelta(hours=12): # 12시간 이내에 작성된 기사만
                         title = title_tag.get_text(strip=True)
                         link = "https://finance.yahoo.com" + link_tag['href']
 
-                        if title not in unique_articles:
+                        if title not in unique_articles: # 중복 제거
                             unique_articles[title] = {"url": link, "time": time_str}
 
         except Exception as e:
@@ -126,7 +136,9 @@ def get_all_news_links(base_urls):
     article_list = [{"title": title, "url": data["url"], "time": data["time"]} for title, data in unique_articles.items()]
     print(f"총 {len(article_list)}개의 12시간 이내 기사를 찾았습니다.")
     return article_list
-# 대상 URL 목록
+
+# 뉴스 추출대상 URL 목록
+# 전부 야후 파이낸스에서 추출한다
 target_urls = [
     "https://finance.yahoo.com/topic/latest-news/",
     "https://finance.yahoo.com/topic/stock-market-news/",
@@ -150,23 +162,23 @@ def get_article_details(article_list):
     즉, 각 뉴스의 링크에 접속하여 본문과 게시 날짜를 추출한다.
     """ 
     final_results = [] #최종 결과 저장 리스트
-    
-    for i, article in enumerate(article_list):
+
+    for i, article in enumerate(article_list): # 인덱스와 기사 정보를 동시에 순회
         print(f"({i+1}/{len(article_list)}) '{article['title']}' 기사 처리 중...") #작업 확인용
         
-        #앞서 수집한 링크는 주소가 이상하게 되어있어서 수정하는 작업이 필요하다
+        # 앞서 수집한 링크는 주소가 이상하게 되어있어서 수정하는 작업이 필요하다
         url_to_fetch = article['url']
         if url_to_fetch.count('https://finance.yahoo.com') > 1:
             url_to_fetch = 'https://finance.yahoo.com' + url_to_fetch.split('https://finance.yahoo.com')[-1]
         
         # 뉴스 본문 수집
-        retries = 3 #실패했을 경우 세번 반복
+        retries = 3 # 실패했을 경우 세번 반복
         for attempt in range(retries):
             try:
                 response = requests.get(url_to_fetch, headers={'User-Agent': 'Mozilla/5.0'})
                 response.raise_for_status()
 
-                soup = BeautifulSoup(response.text, 'html.parser') #html 파싱
+                soup = BeautifulSoup(response.text, 'html.parser')
 
                 # 1. 본문 추출
                 content_parts = []
@@ -176,7 +188,7 @@ def get_article_details(article_list):
                 content = ' '.join(content_parts)
 
                 # 2. 게시 날짜 추출 및 형식 변환
-                time_tag = soup.select_one('time')
+                time_tag = soup.select_one('time') # 뉴스가 게시된 정확한 시간 추출
                 publish_date_str = "N/A"
                 if time_tag and time_tag.has_attr('datetime'):
                     dt_object = parse(time_tag['datetime'])
@@ -201,30 +213,30 @@ def get_article_details(article_list):
                     time.sleep(wait_time)
                 else:
                     print(f"  [오류] HTTP 오류 발생: {e}")
-                    break # 다른 HTTP 오류는 재시도하지 않음
+                    break
             except requests.exceptions.RequestException as e:
                 print(f"  [오류] 기사 접근 중 오류 발생: {e}")
-                break # 일반적인 요청 오류는 재시도하지 않음
+                break 
             except Exception as e:
                 print(f"  [오류] 기사 처리 중 예외 발생: {e}")
                 break
-        else: # for 루프가 break 없이 끝났을 경우 (모든 재시도 실패)
+        else: 
             print(f"  [실패] 모든 재시도에 실패하여 다음 기사로 넘어갑니다.")
             
     return final_results
 
 # 함수 실행
-# 이전에 생성된 news_list를 그대로 사용합니다.
+# 이전에 생성된 news_list를 그대로 사용
 full_news_data = get_article_details(news_list)
 
-# 최종 결과 생성 (데이터프레임으로 변환)
+# 최종 결과 생성
 df = pd.DataFrame(full_news_data)
-# df['publish_date'] = pd.to_datetime(df['publish_date'], errors='coerce') + pd.Timedelta(hours=9) # 한국 시간으로 변환 UTC+9
 print("--- 최종 뉴스 스크래핑 완료")
 
 ###############################################################
 # 3. 뉴스 요약
-# --- 여기에 API 키를 직접 입력하세요 ---
+
+# 환경변수 불러오기
 API_KEY = os.environ.get("GEMINI_API_KEY")
 
 def analyze_news_article(article_text: str, api_key: str) -> str:
@@ -233,13 +245,9 @@ def analyze_news_article(article_text: str, api_key: str) -> str:
     보내주신 공식 예제 구조를 그대로 따릅니다.
     """
     try:
-        # 1. genai.Client를 사용하여 클라이언트를 생성합니다.
-        client = genai.Client(api_key=api_key)
-
-        # 2. 모델 이름을 요청하신 그대로 "gemini-2.5-flash"로 설정합니다.
-        model = "gemini-2.5-flash"
-        
-        # 3. types.Content와 types.Part를 사용하여 대화 내용을 구성합니다.
+        client = genai.Client(api_key=api_key) # gemini 클라이언트를 생성
+        model = "gemini-2.5-flash" # "gemini-2.5-flash" 모델 사용
+        # 프롬프트 구성
         contents = [
             types.Content(
                 role="user",
@@ -274,13 +282,13 @@ ARTICLE TO ANALYZE:
             types.Content(
                 role="user",
                 parts=[
-                    # 함수 인자로 받은 뉴스 기사를 여기에 삽입합니다.
+                    # 함수 인자로 받은 뉴스 기사를 여기에 입력
                     types.Part.from_text(text=article_text),
                 ],
             ),
         ]
         
-        # 4. client.models.generate_content_stream을 호출하여 결과를 스트리밍합니다.
+        # gemini 작동
         response_chunks = []
         for chunk in client.models.generate_content_stream(
             model=model,
@@ -296,7 +304,7 @@ ARTICLE TO ANALYZE:
         return '{"summary": "Error during analysis."}'
 
 
-# --- 메인 실행 부분 ---
+# gemini API 실행
 if __name__ == "__main__":
 
     df['summary'] = df['content'].apply(lambda content: analyze_news_article(content, api_key=API_KEY))
@@ -308,18 +316,18 @@ def get_summary_embedding(summary_text: str, client: genai.Client) -> list[float
     """
     하나의 요약본 텍스트를 받아 임베딩 벡터를 반환하는 함수.
     """
-    # 1. 요약본 내용이 비어있는지 확인
+    # 내용이 비어있는지 확인
     if not summary_text or pd.isna(summary_text):
         return None
     
     try:
-        # 2. 'contents'가 아닌 'content' 파라미터로 단일 텍스트를 전달
+        # 'contents'가 아닌 'content' 파라미터로 단일 텍스트를 전달
         result = client.models.embed_content(
             model="models/text-embedding-004",
             contents=summary_text,
             config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
         )
-        # 3. 결과 객체에서 .embedding 속성으로 벡터를 직접 반환
+        # 결과 객체에서 .embedding 속성으로 벡터를 직접 반환
         vectors = [obj.values for obj in result.embeddings]
         vectors=vectors[0]
 
@@ -330,7 +338,7 @@ def get_summary_embedding(summary_text: str, client: genai.Client) -> list[float
         return None
 
 
-# --- 메인 실행 부분 ---
+# 임베딩 함수 실행
 if __name__ == "__main__":
     # 클라이언트는 한 번만 생성합니다.
     client = genai.Client(api_key=API_KEY)
@@ -347,7 +355,7 @@ df=df[["title","publish_date","url","summary","embedding"]]
 
 try:
     supabase: Client = create_client(supabase_url, supabase_key)
-    print("☁️ Supabase에 연결하여 기존 데이터를 확인합니다.")
+    print("Supabase에 연결하여 기존 데이터를 확인합니다.")
 
     # DB에 저장된 모든 'title' 목록을 가져오기
     response = supabase.table('financial_news_summary').select('title').execute()
