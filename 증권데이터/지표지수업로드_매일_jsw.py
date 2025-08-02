@@ -25,7 +25,7 @@ today_str = datetime.utcnow().strftime('%Y-%m-%d')
 tickers_list = list(tickers_info.keys())
 data_wide = yf.download(tickers_list, start=today_str, auto_adjust=True, progress=False)
 
-# '종가(Close)' 데이터만 추출 및 데이터 변환
+# 종가(Close) 데이터만 추출 및 데이터 변환
 close_prices = data_wide['Close']
 final_df = close_prices.stack().reset_index()
 final_df.columns = ['date', 'index_en', 'value']
@@ -38,6 +38,7 @@ final_df = final_df[['index_en', 'index_ko', 'date', 'value']]
 final_df['date'] = final_df['date'].dt.strftime('%Y-%m-%dT%H:%M:%S')
 
 # Supabase 클라이언트 설정 (환경 변수 사용)
+# .env 파일이 아니라 Github Actions에서 환경 변수를 설정하여 사용
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
