@@ -1,4 +1,4 @@
-# analysis_model/agents/report_synthesizer_agent.py
+# 4. 최종 보고서 생성 에이전트
 
 import os
 import json
@@ -8,8 +8,10 @@ from typing import Dict, Any, Set
 from ..state import AnalysisState, FinalReport
 from .news_analyst_agent import METRICS_MAP
 
+########################################################
 def call_clova_api(prompt: str) -> str | None:
-    """Clova Studio API를 호출하고 최종 응답 문자열을 반환하는 범용 함수"""
+    """Clova X API를 호출하고 최종 보고서 생성 함수"""
+    # Clova X 환경변수
     host = 'https://clovastudio.stream.ntruss.com'
     api_key = os.environ.get("CLOVA_API_KEY")
     request_id = os.environ.get("CLOVA_REQUEST_ID")
@@ -20,7 +22,7 @@ def call_clova_api(prompt: str) -> str | None:
         'Content-Type': 'application/json; charset=utf-8', 'Accept': 'text/event-stream'
     }
     request_data = {
-        'messages': [{"role": "user", "content": prompt}], 'topP': 0.8, 'topK': 0, 'maxTokens': 4096,
+        'messages': [{"role": "user", "content": prompt}], 'topP': 0.8, 'topK': 0, 'maxTokens': 4096, # 장문의 보고서를 작성해야하기 때문에 토큰수를 최대로 증가
         'temperature': 0.5, 'repetitionPenalty': 1.1, 'stopBefore': [], 'includeAiFilters': True,
     }
     try:
@@ -39,7 +41,7 @@ def call_clova_api(prompt: str) -> str | None:
                     except (json.JSONDecodeError, KeyError): continue
             return final_content
     except Exception as e:
-        print(f"⚠️ API 호출/처리 중 오류 발생: {e}")
+        print(f"API 호출/처리 중 오류 발생: {e}")
         return None
 
 def _cleanup_string_values(data: Any) -> Any:
@@ -72,7 +74,7 @@ def _get_entities_to_analyze(state: AnalysisState) -> list[str]:
 
 
 def _generate_single_entity_analysis(state: AnalysisState, entity_key: str) -> Dict | None:
-    """1단계-개별: '분석가 LLM' - 단일 주체에 대한 심층 분석 JSON 생성"""
+    """'분석가 LLM' - 단일 주체에 대한 심층 분석 JSON 생성"""
     target_name = state.get("company_name", "N/A")
     news_impact_data = state.get("market_analysis_result", {}).get("news_impact_data", [])
 
@@ -108,11 +110,11 @@ Now, generate the JSON object for `{entity_key}` based on all the instructions a
         data = json.loads(clean_str)
         return _cleanup_string_values(data)
     except json.JSONDecodeError:
-        print(f"  - ⚠️ [분석가 LLM] '{entity_key}' 분석 결과가 유효한 JSON이 아닙니다.")
+        print(f"[분석가 LLM] '{entity_key}' 분석 결과가 유효한 JSON이 아닙니다.")
         return None
 
 def _generate_briefing_summary(state: AnalysisState, entity_analysis: Dict, financial_health: str, news_summaries: str) -> str | None:
-    """추가된 함수: '요약 LLM' - 전체 분석 내용을 요약하는 문단 생성"""
+    """'요약가 LLM' - 전체 분석 내용을 요약하는 문단 생성"""
     target_name = state.get("company_name", "N/A")
     
     prompt = f"""
@@ -151,11 +153,11 @@ Now, generate the summary JSON object based on the provided analysis.
         data = json.loads(clean_str)
         return _cleanup_string_values(data).get("briefing_summary")
     except json.JSONDecodeError:
-        print("  - ⚠️ [요약 LLM] 응답이 유효한 JSON 형식이 아닙니다.")
+        print("[요약가 LLM] 응답이 유효한 JSON 형식이 아닙니다.")
         return None
 
 def _generate_strategy_suggestion(state: AnalysisState, entity_analysis: Dict, financial_health: str, news_summaries: str) -> str | None:
-    """2단계: '전략가 LLM' - 최종 투자 전략 제안 문단 생성 (개인 투자자 관점으로 수정)"""
+    """'전략가 LLM' - 최종 투자 전략 제안 문단 생성 (개인 투자자 관점으로 수정)"""
     target_name = state.get("company_name", "N/A")
     correlation_summary = state.get("market_analysis_result", {}).get("correlation_summary", [])
     
@@ -198,13 +200,13 @@ Now, generate the investment strategy JSON object for a personal investor.
         data = json.loads(clean_str)
         return _cleanup_string_values(data).get("strategy_suggestion")
     except json.JSONDecodeError:
-        print("  - ⚠️ [전략가 LLM] 응답이 유효한 JSON 형식이 아닙니다.")
+        print("[전략가 LLM] 응답이 유효한 JSON 형식이 아닙니다.")
         return None
 
 
 def run_report_synthesizer(state: AnalysisState) -> Dict[str, Any]:
     """개별 LLM 호출 구조를 사용하여 최종 투자 브리핑을 생성하는 메인 함수"""
-    print("\n--- ✍️ 최종 투자 브리핑 생성 에이전트 (개별 호출 구조) 실행 ---")
+    print("\n--- 최종 투자 브리핑 생성 에이전트 (개별 호출 구조) 실행 ---")
     
     target_name = state.get("company_name", "N/A")
     # State에서 financial_health 값을 가져옵니다.
@@ -218,7 +220,7 @@ def run_report_synthesizer(state: AnalysisState) -> Dict[str, Any]:
     if not news_summaries_text:
         news_summaries_text = "분석된 주요 뉴스가 없습니다."
 
-    # 1. 각 엔티티에 대해 개별적으로 LLM을 호출하여 분석을 수행합니다.
+    # 각 엔티티에 대해 개별적으로 LLM을 호출하여 분석을 수행합니다.
     full_entity_analysis = {}
     entities_to_analyze = _get_entities_to_analyze(state)
     print("  - [1단계] 개별 엔티티 분석 시작...")
@@ -232,20 +234,20 @@ def run_report_synthesizer(state: AnalysisState) -> Dict[str, Any]:
                 "내용": f"{entity_key}에 대한 분석 생성에 실패했습니다.",
                 "주가_반응": "데이터 분석 오류"
             }
-            print(f"    - ⚠️ '{entity_key}' 분석에 실패하여 기본값으로 대체합니다.")
+            print(f"'{entity_key}' 분석에 실패하여 기본값으로 대체합니다.")
     
     if not full_entity_analysis:
-        print("⚠️ 모든 엔티티 분석에 실패했습니다. 프로세스를 중단합니다.")
+        print("모든 엔티티 분석에 실패했습니다. 프로세스를 중단합니다.")
         return {}
 
-    # 2. 분석된 모든 내용을 바탕으로 요약 및 최종 투자 전략을 각각 생성합니다.
+    # 분석된 모든 내용을 바탕으로 요약 및 최종 투자 전략을 각각 생성합니다.
     print("  - [2단계] 브리핑 요약 생성 중...")
     briefing_summary = _generate_briefing_summary(state, full_entity_analysis, financial_health, news_summaries_text)
     
     print("  - [3단계] 최종 투자 전략 생성 중...")
     strategy_suggestion = _generate_strategy_suggestion(state, full_entity_analysis, financial_health, news_summaries_text)
 
-    # 4. 분석 결과를 종합하여 최종 리포트 객체를 만듭니다.
+    # 분석 결과를 종합하여 최종 리포트 객체를 만듭니다.
     final_report_structured = FinalReport(
         report_title=f"[오늘의 투자 브리핑] {target_name} 기업 관련 주요 동향 및 전략",
         briefing_summary=briefing_summary if briefing_summary else "분석 요약 생성에 실패했습니다.",
@@ -253,5 +255,5 @@ def run_report_synthesizer(state: AnalysisState) -> Dict[str, Any]:
         strategy_suggestion=strategy_suggestion if strategy_suggestion else "전략 제안 생성에 실패했습니다."
     )
     
-    print("✅ [Report Synthesizer] 개별 호출 기반 최종 브리핑 생성을 완료했습니다.")
+    print("[Report Synthesizer] 개별 호출 기반 최종 브리핑 생성을 완료했습니다.")
     return {"final_report": final_report_structured}
