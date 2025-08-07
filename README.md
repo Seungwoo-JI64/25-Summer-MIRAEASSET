@@ -3,6 +3,9 @@
 **서정유**, **유희준**, **지승우**  
 대표 연락처 : swoo64@naver.com  
 
+발표용 ppt:
+https://drive.google.com/file/d/1-mXMoOswevJ6lYvFocLskLT7VZc0ORki/view?usp=sharing
+
 # 1. 서비스 접속 링크
 https://datatada-miraeasset-webservice.azurewebsites.net/  
 본 서비스는 프로토타입으로서, 2025년 8월 22일 자정까지 시범 운영됩니다.  
